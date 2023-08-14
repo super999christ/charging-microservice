@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label "s32-windows"
+        label "docker-agent"
     }
 
     environment {
