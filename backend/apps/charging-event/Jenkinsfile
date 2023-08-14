@@ -1,0 +1,42 @@
+pipeline {
+    agent {
+        label "s32-windows"
+    }
+
+    environment {
+        AWS_ACCESS_KEY_ID = credentials("AWS_ACCESS_KEY_ID")
+        AWS_SECRET_ACCESS_KEY = credentials("AWS_SECRET_ACCESS_KEY")
+        AWS_REGION = "us-west-2"
+        IMAGE_NAME = "charging/charging-events:latest"
+        ECR_URI = "101265448075.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        IMAGE_FQDN = "${ECR_URI}/${IMAGE_NAME}"
+    }
+
+    options {
+        skipDefaultCheckout true // Jenkins will fail to clone repository if not skipped
+    }
+    stages {
+        stage("Git checkout") {
+            steps {
+                git branch: "main", credentialsId: "jenkins", url: "https://github.com/AtlisMotorVehicles/Charging-Microservices"
+            }
+        }
+        stage("Log into AWS ECR") {
+            steps {
+                bat "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
+            }
+        }
+        stage("Build image") {
+            dir("backend/apps/charging-event") {
+                steps {
+                    docker.build "${IMAGE_FQDN}"
+                }
+            }
+        }
+        stage("Push image to ECR") {
+            steps {
+                bat "docker push ${IMAGE_FQDN}"
+            }
+        }
+    }
+}

@@ -1,0 +1,24 @@
+{
+  "collection": "@nestjs/schematics",
+  "monorepo": true,
+  "projects": {
+    "user-management-service": {
+      "type": "application",
+      "root": "apps/user-management",
+      "entryFile": "main",
+      "sourceRoot": "apps/user-management/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/user-management/tsconfig.app.json"
+      }
+    },
+    "charging-event-service": {
+      "type": "application",
+      "root": "apps/charging-event",
+      "entryFile": "main",
+      "sourceRoot": "apps/charging-event/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/charging-event/tsconfig.app.json"
+      }
+    }
+  }
+}

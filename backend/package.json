@@ -1,0 +1,50 @@
+{
+  "name": "nxu-charging-app",
+  "version": "0.0.1",
+  "private": true,
+  "description": "NXU Charging App Microservices",
+  "scripts": {
+    "tsc": "tsc",
+    "build": "tsc && npm run build:user-management & npm run build:charging-event",
+    "build:user-management": "npm run --prefix apps/user-management build",
+    "build:charging-event": "npm run --prefix apps/charging-event build",
+    "dev:user-management": "npm run --prefix apps/user-management dev",
+    "dev:charging-event": "npm run --prefix apps/charging-event dev",
+    "migration:generate": "npm run migration:generate:user-management migrations/updates & npm run migration:generate:charging-event migrations/updates",
+    "migration:run": "npm run migration:run:user-management & npm run migration:run:charging-event",
+    "migration:generate:user-management": "npm run --prefix apps/user-management migration:generate",
+    "migration:run:user-management": "npm run --prefix apps/user-management migration:run",
+    "migration:show:user-management": "npm run --prefix apps/user-management migration:show",
+    "migration:generate:charging-event": "npm run --prefix apps/charging-event migration:generate",
+    "migration:run:charging-event": "npm run --prefix apps/charging-event migration:run",
+    "migration:show:charging-event": "npm run --prefix apps/charging-event migration:show"
+  },
+  "dependencies": {
+    "@nestjs/axios": "^2.0.0",
+    "@nestjs/common": "^9.4.0",
+    "@nestjs/config": "^2.3.1",
+    "@nestjs/core": "^9.4.0",
+    "@nestjs/jwt": "^10.0.3",
+    "@nestjs/microservices": "^9.4.0",
+    "@nestjs/platform-express": "^9.4.0",
+    "@nestjs/swagger": "^6.3.0",
+    "@nestjs/typeorm": "^9.0.1",
+    "axios": "^1.4.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.0.3",
+    "pg": "^8.10.0",
+    "source-map-support": "^0.5.21",
+    "twilio": "^4.10.0",
+    "typeorm": "^0.3.15",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^9.4.0",
+    "@types/bcryptjs": "^2.4.2",
+    "@types/express": "^4.17.17",
+    "@types/jest": "^29.5.1",
+    "@types/uuid": "^9.0.1",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0"
+  }
+}
