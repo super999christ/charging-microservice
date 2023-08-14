@@ -3,12 +3,7 @@ pipeline {
     //     label "s32-windows"
     // }
 
-    agent {
-        docker {
-            image 'amazon/aws-cli'
-            reuseNode true
-        }
-    }
+    agent none
 
     environment {
         AWS_ACCESS_KEY_ID = credentials("AWS_ACCESS_KEY_ID")
