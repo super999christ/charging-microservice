@@ -10,7 +10,7 @@ pipeline {
         IMAGE_NAME = "charging/charging-events:latest"
         ECR_URI = "101265448075.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_FQDN = "${ECR_URI}/${IMAGE_NAME}"
-        PATH = "${env.PATH},C:\\Program Files\\Docker"    // worker node complains that docker isn't in path when it actually is.
+        PATH = "${env.PATH},C:\\Program Files\\Docker\\docker.exe"    // worker node complains that docker isn't in path when it actually is.
     }
 
     options {
@@ -45,6 +45,7 @@ pipeline {
             // }
 
             steps {
+                bat ""
                 bat "docker ps"
                 bat "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
             }
