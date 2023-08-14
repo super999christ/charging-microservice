@@ -28,8 +28,10 @@ pipeline {
         }
         stage("Build image") {
             steps {
-                dir("backend/apps/charging-event") {
-                    dockerImage = docker.build "${IMAGE_FQDN}"
+                script {
+                    dir("backend/apps/charging-event") {
+                        dockerImage = docker.build "${IMAGE_FQDN}"
+                    }
                 }
             }
         }
