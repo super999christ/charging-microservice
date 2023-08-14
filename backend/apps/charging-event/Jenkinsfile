@@ -25,6 +25,10 @@ pipeline {
                 git branch: "main", credentialsId: "jenkins", url: "https://github.com/AtlisMotorVehicles/Charging-Microservices"
             }
         }
+         stage('Initialize') {
+            def dockerHome = tool 'myDocker'
+            env.PATH = "${dockerHome}/bin:${env.PATH}"
+        }
         stage("Log into AWS ECR") {
             // agent {
             //     docker {
