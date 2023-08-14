@@ -27,8 +27,8 @@ pipeline {
             }
         }
         stage("Build image") {
-            dir("backend/apps/charging-event") {
-                steps {
+            steps {
+                dir("backend/apps/charging-event") {
                     docker.build "${IMAGE_FQDN}"
                 }
             }
