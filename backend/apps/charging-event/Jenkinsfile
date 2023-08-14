@@ -1,7 +1,7 @@
 pipeline {
-    agent {
-        label "s32-windows"
-    }
+    // agent {
+    //     label "s32-windows"
+    // }
 
     environment {
         AWS_ACCESS_KEY_ID = credentials("AWS_ACCESS_KEY_ID")
