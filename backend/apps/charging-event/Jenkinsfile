@@ -15,9 +15,9 @@ pipeline {
     options {
         skipDefaultCheckout true // Jenkins will fail to clone repository if not skipped
     }
-    tools {
-       dockerTool "docker"
-    }
+    // tools {
+    //    dockerTool "docker"
+    // }
     stages {
         stage("Git checkout") {
             steps {
