@@ -10,6 +10,7 @@ pipeline {
         IMAGE_NAME = "charging/charging-events:latest"
         ECR_URI = "101265448075.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_FQDN = "${ECR_URI}/${IMAGE_NAME}"
+        PATH = "${env.PATH},C:\Program Files\Docker"    // worker node complains that docker isn't in path when it actually is.
     }
 
     options {
