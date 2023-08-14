@@ -16,9 +16,6 @@ pipeline {
     options {
         skipDefaultCheckout true // Jenkins will fail to clone repository if not skipped
     }
-    // tools {
-    //    dockerTool "docker"
-    // }
     stages {
         stage("Git checkout") {
             steps {
@@ -26,12 +23,12 @@ pipeline {
             }
         }
         stage("Log into AWS ECR") {
-            // agent {
-            //     docker {
-            //         image 'amazon/aws-cli'
-            //         reuseNode true
-            //     }
-            // }
+            agent {
+                docker {
+                    image 'amazon/aws-cli'
+                    reuseNode true
+                }
+            }
 
             // steps {
             //     script {
@@ -45,9 +42,7 @@ pipeline {
             // }
 
             steps {
-                bat ""
-                bat "docker ps"
-                bat "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
+                sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
             }
         }
         stage("Build image") {
