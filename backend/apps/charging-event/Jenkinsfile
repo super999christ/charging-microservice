@@ -22,27 +22,27 @@ pipeline {
             }
         }
         stage("Log into AWS ECR") {
-            // agent {
-            //     docker {
-            //         image 'amazon/aws-cli'
-            //         reuseNode true
-            //     }
-            // }
-
-            steps {
-                script {
-                    docker.image("amazon/aws-cli").inside {
-                        sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
-                    }
+            agent {
+                docker {
+                    image 'amazon/aws-cli'
+                    reuseNode true
                 }
             }
+
+            // steps {
+            //     script {
+            //         docker.image("amazon/aws-cli").inside {
+            //             sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
+            //         }
+            //     }
+            // }
             // docker.image("amazon/aws-cli").inside {
 
             // }
 
-            // steps {
-            //     bat "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
-            // }
+            steps {
+                bat "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
+            }
         }
         stage("Build image") {
             steps {
