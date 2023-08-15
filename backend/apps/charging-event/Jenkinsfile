@@ -31,7 +31,7 @@ pipeline {
             steps {
                 dir("backend/apps/charging-event") {
                     sh "until docker info; do sleep 1; done"
-                    sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
+                    // sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
                     sh "docker build -t ${IMAGE_FQDN} ."
                     sh "docker push ${IMAGE_FQDN}"
                 }
