@@ -1,11 +1,11 @@
 pipeline {
     agent {
-        label "docker-agent"
+        label "s32-windows"
     }
 
-    environment {
-        AWS_ACCESS_KEY_ID = credentials("AWS_ACCESS_KEY_ID")
-        AWS_SECRET_ACCESS_KEY = credentials("AWS_SECRET_ACCESS_KEY")
+    // environment {
+    //     AWS_ACCESS_KEY_ID = credentials("AWS_ACCESS_KEY_ID")
+    //     AWS_SECRET_ACCESS_KEY = credentials("AWS_SECRET_ACCESS_KEY")
         AWS_REGION = "us-west-2"
         IMAGE_NAME = "charging/charging-events:latest"
         ECR_URI = "101265448075.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -21,25 +21,45 @@ pipeline {
                 git branch: "main", credentialsId: "jenkins", url: "https://github.com/AtlisMotorVehicles/Charging-Microservices"
             }
         }
-        stage("Build & Push Image") {
-            agent {
-                // docker {
-                //     image 'jansauer/dockercli-plus-awscli'
-                //     reuseNode true
-                // }
-                dockerfile {
-                    filename "Dockerfile.pipeline"
-                    dir "backend/apps/charging-event"
-                }
-            }
-            steps {
-                dir("backend/apps/charging-event") {
-                    sh "until docker info; do sleep 1; done"
-                    // sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
-                    sh "docker build -t ${IMAGE_FQDN} ."
-                    sh "docker push ${IMAGE_FQDN}"
+        stage('Build') { 
+            steps { 
+                script {
+                    dir("backend/apps/charging-event") {
+                        app = docker.build("${IMAGE_FQDN}")
+                    }
                 }
             }
         }
+        stage('Deploy') {
+            steps {
+                script {
+                    docker.withRegistry('https://${ECR_URI}', 'jenkins-ecr-pusher') {
+                        app.push("${env.BUILD_NUMBER}")
+                        app.push("latest")
+                    }
+                }
+            }
+        }
+
+        // stage("Build & Push Image") {
+        //     // agent {
+        //     //     // docker {
+        //     //     //     image 'jansauer/dockercli-plus-awscli'
+        //     //     //     reuseNode true
+        //     //     // }
+        //     //     dockerfile {
+        //     //         filename "Dockerfile.pipeline"
+        //     //         dir "backend/apps/charging-event"
+        //     //     }
+        //     // }
+        //     steps {
+        //         dir("backend/apps/charging-event") {
+        //             // sh "until docker info; do sleep 1; done"
+        //             sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
+        //             sh "docker build -t ${IMAGE_FQDN} ."
+        //             sh "docker push ${IMAGE_FQDN}"
+        //         }
+        //     }
+        // }
     }
 }
