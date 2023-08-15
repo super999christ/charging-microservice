@@ -10,7 +10,6 @@ pipeline {
         IMAGE_NAME = "charging/charging-events:latest"
         ECR_URI = "101265448075.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_FQDN = "${ECR_URI}/${IMAGE_NAME}"
-        PATH = "${env.PATH},C:\\Program Files\\Docker\\docker.exe"    // worker node complains that docker isn't in path when it actually is.
     }
 
     options {
@@ -22,41 +21,19 @@ pipeline {
                 git branch: "main", credentialsId: "jenkins", url: "https://github.com/AtlisMotorVehicles/Charging-Microservices"
             }
         }
-        stage("Log into AWS ECR") {
+        stage("Build & Push Image") {
             agent {
                 docker {
                     image 'amazon/aws-cli'
                     reuseNode true
                 }
             }
-
-            // steps {
-            //     script {
-            //         docker.image("amazon/aws-cli").inside {
-            //             sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
-            //         }
-            //     }
-            // }
-            // docker.image("amazon/aws-cli").inside {
-
-            // }
-
             steps {
-                sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
-            }
-        }
-        stage("Build image") {
-            steps {
-                script {
-                    dir("backend/apps/charging-event") {
-                        dockerImage = docker.build "${IMAGE_FQDN}"
-                    }
+                dir("backend/apps/charging-event") {
+                    sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
+                    sh "docker build -t ${IMAGE_FQDN} ."
+                    sh "docker push ${IMAGE_FQDN}"
                 }
-            }
-        }
-        stage("Push image to ECR") {
-            steps {
-                bat "docker push ${IMAGE_FQDN}"
             }
         }
     }
