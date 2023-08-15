@@ -23,9 +23,13 @@ pipeline {
         }
         stage("Build & Push Image") {
             agent {
-                docker {
-                    image 'jansauer/dockercli-plus-awscli'
-                    reuseNode true
+                // docker {
+                //     image 'jansauer/dockercli-plus-awscli'
+                //     reuseNode true
+                // }
+                dockerfile {
+                    filename "Dockerfile.pipeline"
+                    dir "backend/apps/charging-event"
                 }
             }
             steps {
