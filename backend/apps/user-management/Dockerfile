@@ -6,14 +6,14 @@ COPY . .
 
 RUN touch .env
 
-RUN npm ci
+RUN npm i
 
-RUN npm install -g @nestjs/cli
+RUN npm install -g @nestjs/cli typescript
 
 RUN npm run tsc
 
-RUN npm run build:user-management
+RUN npm run build
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-CMD npm run migration:run:user-management & npm run dev:user-management
+CMD npm run migration:run & npm run dev

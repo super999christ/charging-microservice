@@ -1,7 +1,7 @@
 {
   "scripts": {
     "tsc": "tsc",
-    "dev": "nest start --path tsconfig.app.json --watch",
+    "dev": "nest start --watch",
     "build": "nest build",
     "migration:generate": "typeorm migration:generate --outputJs true --dataSource dist/typeorm/datasource.js",
     "migration:run": "typeorm migration:run --dataSource dist/typeorm/datasource.js",
