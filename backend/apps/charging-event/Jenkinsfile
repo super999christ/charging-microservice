@@ -10,9 +10,6 @@ pipeline {
         IMAGE_FQDN = "${ECR_URI}/${IMAGE_NAME}"
     }
 
-    options {
-        skipDefaultCheckout true // Jenkins will fail to clone repository if not skipped
-    }
     stages {
         stage("Git checkout") {
             steps {
@@ -33,7 +30,7 @@ pipeline {
         stage("Deploy") {
             steps {
                 script {
-                    docker.withRegistry("https://${env.ECR_URI}", "ecr:us-west-2:jenkins-ecr-pusher") {
+                    docker.withRegistry("https://${env.ECR_URI}", "ecr:${env.AWS_REGION}:jenkins-ecr-pusher") {
                         app.push("${env.TAG}")
                     }
                 }
