@@ -7,7 +7,7 @@ pipeline {
     //     AWS_ACCESS_KEY_ID = credentials("AWS_ACCESS_KEY_ID")
     //     AWS_SECRET_ACCESS_KEY = credentials("AWS_SECRET_ACCESS_KEY")
         AWS_REGION = "us-west-2"
-        IMAGE_NAME = "charging/charging-events:latest"
+        IMAGE_NAME = "charging/charging-events"
         ECR_URI = "101265448075.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_FQDN = "${ECR_URI}/${IMAGE_NAME}"
     }
@@ -21,20 +21,19 @@ pipeline {
                 git branch: "main", credentialsId: "jenkins", url: "https://github.com/AtlisMotorVehicles/Charging-Microservices"
             }
         }
-        stage('Build') { 
+        stage("Build") { 
             steps { 
                 script {
                     dir("backend/apps/charging-event") {
-                        app = docker.build("${IMAGE_FQDN}")
+                        app = docker.build("${IMAGE_NAME}")
                     }
                 }
             }
         }
-        stage('Deploy') {
+        stage("Deploy") {
             steps {
                 script {
-                    docker.withRegistry('https://${ECR_URI}', 'ecr:us-west-2:jenkins-ecr-pusher') {
-                        app.push("${env.BUILD_NUMBER}")
+                    docker.withRegistry("https://${env.ECR_URI}", "ecr:us-west-2:jenkins-ecr-pusher") {
                         app.push("latest")
                     }
                 }
@@ -44,7 +43,7 @@ pipeline {
         // stage("Build & Push Image") {
         //     // agent {
         //     //     // docker {
-        //     //     //     image 'jansauer/dockercli-plus-awscli'
+        //     //     //     image "jansauer/dockercli-plus-awscli"
         //     //     //     reuseNode true
         //     //     // }
         //     //     dockerfile {
