@@ -24,7 +24,7 @@ pipeline {
         stage("Build & Push Image") {
             agent {
                 docker {
-                    image 'jansauer/docker-plus-awscli'
+                    image 'jansauer/dockercli-plus-awscli'
                     reuseNode true
                 }
             }
