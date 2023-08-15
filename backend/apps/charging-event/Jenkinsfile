@@ -4,8 +4,6 @@ pipeline {
     }
 
     environment {
-    //     AWS_ACCESS_KEY_ID = credentials("AWS_ACCESS_KEY_ID")
-    //     AWS_SECRET_ACCESS_KEY = credentials("AWS_SECRET_ACCESS_KEY")
         AWS_REGION = "us-west-2"
         IMAGE_NAME = "charging/charging-events"
         ECR_URI = "101265448075.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -24,6 +22,8 @@ pipeline {
         stage("Build") { 
             steps { 
                 script {
+                    env.TAG = input message: 'Please enter image tag',
+                                        parameters: [string(defaultValue: 'latest', description: '', name: 'tag')]
                     dir("backend/apps/charging-event") {
                         app = docker.build("${IMAGE_NAME}")
                     }
@@ -34,31 +34,10 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry("https://${env.ECR_URI}", "ecr:us-west-2:jenkins-ecr-pusher") {
-                        app.push("latest")
+                        app.push("${env.TAG}")
                     }
                 }
             }
         }
-
-        // stage("Build & Push Image") {
-        //     // agent {
-        //     //     // docker {
-        //     //     //     image "jansauer/dockercli-plus-awscli"
-        //     //     //     reuseNode true
-        //     //     // }
-        //     //     dockerfile {
-        //     //         filename "Dockerfile.pipeline"
-        //     //         dir "backend/apps/charging-event"
-        //     //     }
-        //     // }
-        //     steps {
-        //         dir("backend/apps/charging-event") {
-        //             // sh "until docker info; do sleep 1; done"
-        //             sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}"
-        //             sh "docker build -t ${IMAGE_FQDN} ."
-        //             sh "docker push ${IMAGE_FQDN}"
-        //         }
-        //     }
-        // }
     }
 }
