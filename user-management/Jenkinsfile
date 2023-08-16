@@ -13,7 +13,7 @@ pipeline {
     stages {
         stage("Git checkout") {
             steps {
-                git branch: "main", credentialsId: "jenkins", url: "https://github.com/AtlisMotorVehicles/Charging-Microservices"
+                checkout scm
             }
         }
         stage("Build") { 
@@ -21,7 +21,7 @@ pipeline {
                 script {
                     env.TAG = input message: 'Please enter image tag',
                                         parameters: [string(defaultValue: 'latest', description: '', name: 'tag')]
-                    dir("backend/apps/user-management") {
+                    dir("user-management") {
                         app = docker.build("${IMAGE_NAME}")
                     }
                 }
