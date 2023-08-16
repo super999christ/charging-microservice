@@ -13,7 +13,7 @@ pipeline {
     stages {
         stage("Git checkout") {
             steps {
-                checkout scm
+                git branch: "main", credentialsId: "jenkins", url: "https://github.com/AtlisMotorVehicles/Charging-Microservices"
             }
         }
         stage("Build") { 
