@@ -5,7 +5,7 @@ pipeline {
 
     environment {
         AWS_REGION = "us-west-2"
-        IMAGE_NAME = "charging/charging-user-management"
+        IMAGE_NAME = "charging/user-management"
         ECR_URI = "101265448075.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_FQDN = "${ECR_URI}/${IMAGE_NAME}"
     }
