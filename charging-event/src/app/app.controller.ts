@@ -35,32 +35,65 @@ export class AppController {
   @ApiBearerAuth()
   public async startCharge(
     @Body() body: StartChargeDto,
+    @Request() request: IRequest,
     @Response() response: IResponse
   ) {
-    let { phoneNumber, stationId } = body;
+    let { stationId } = body;
     try {
-      phoneNumber = convert2StandardPhoneNumber(phoneNumber);
+      const user = (
+        await this.externalService.umGetProfile(
+          String(request.headers["authorization"])
+        )
+      ).data;
+      const phoneNumber = convert2StandardPhoneNumber(user.phoneNumber);
       if (!phoneNumber) {
-        response
-          .status(400)
-          .send("Please enter 10 digit phone number - no dashes or spaces");
+        response.status(400).send({
+          message: "Please enter 10 digit phone number - no dashes or spaces",
+        });
         return;
       }
-      const userPhone = (
-        await this.externalService.umValidatePhone({ phoneNumber })
-      ).data;
-      // Saves a new event in the DB
-      const { data: notification } =
-        await this.externalService.nsSendSMSAuthCode({ phoneNumber });
       const chargingEvent = await this.chargingEventService.saveChargingEvent({
         phoneNumber,
         stationId,
-        notificationId: notification.id,
+        notificationId: 0,
       });
+      const { data: connectivity } =
+        await this.chargingIoTService.checkConnectivity({
+          stationId: chargingEvent.stationId,
+          phoneNumber,
+          eventId: chargingEvent.id,
+        });
+      if (connectivity.status) {
+        const { data } = await this.externalService.asRequestUserToken({
+          userId: user.id,
+        });
+        const { data: result } = await this.chargingIoTService.manageCharging({
+          eventId: chargingEvent.id,
+          eventType: "start",
+        });
+        if (result.status) {
+          response.status(200).send({
+            message: "AuthCode valid",
+            token: data.token,
+            ...chargingEvent,
+          });
+        } else {
+          response.status(500).send({
+            message: "Unable to start charging please try back after some time",
+          });
+        }
+      } else {
+        response.status(400).send({
+          message:
+            "Charging Session not available please try back after some time",
+        });
+      }
       response.status(200).send(chargingEvent);
     } catch (error) {
       console.error("@Error: ", error);
-      response.status(401).send("Phone No. not registed");
+      response.status(401).send({
+        message: "Phone No. not registed",
+      });
     }
   }
 
@@ -164,11 +197,12 @@ export class AppController {
       if (!chargingEvent) {
         throw Error("ChargingEvent not found");
       }
-      const { data: userPhone } =
-        await this.externalService.umValidatePhone({
-          phoneNumber: chargingEvent.phoneNumber,
-        });
-      const { data: auth } = await this.externalService.asRequestUserToken(userPhone.user.id);
+      const { data: userPhone } = await this.externalService.umValidatePhone({
+        phoneNumber: chargingEvent.phoneNumber,
+      });
+      const { data: auth } = await this.externalService.asRequestUserToken({
+        userId: userPhone.user.id,
+      });
       status.token = auth.token;
       if (status.status && status.chargeComplete) {
         if (chargingEvent) {
