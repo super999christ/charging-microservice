@@ -26,9 +26,6 @@ export class RegisterConfirmDto {
   phoneNumber: string;
 
   @ApiProperty()
-  password: string;
-
-  @ApiProperty()
   smsNotificationId: number;
 
   @ApiProperty()
@@ -41,5 +38,5 @@ export class RegisterConfirmDto {
   emailAuthCode: string;
 
   @ApiProperty()
-  rId: string;
+  pinCode: string;
 }

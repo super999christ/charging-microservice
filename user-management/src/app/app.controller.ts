@@ -28,6 +28,7 @@ import { UpdateCreditCardDto } from "./dtos/UpdateCreditCard.dto";
 import { UpdatePasswordDto } from "./dtos/UpdatePassword.dto";
 import { AxiosError } from "axios";
 import { convert2StandardPhoneNumber } from "../utils/phone.util";
+import { SendLoginAuthcodeDto } from "./dtos/SendLoginAuthcode.dto";
 
 @Controller()
 export class AppController {
@@ -53,21 +54,65 @@ export class AppController {
     @Body() userCredentials: LoginUserDto,
     @Response() response: IResponse
   ) {
-    const { email, password } = userCredentials;
+    let { phoneNumber, authCode, notificationId } = userCredentials;
+    phoneNumber = convert2StandardPhoneNumber(phoneNumber);
     try {
-      const user = await this.userService.validateUser(email, password);
+      const smsResult = await this.externalService.nsValidateSMSAuthCode({
+        authCode,
+        notificationId,
+        phoneNumber,
+      });
 
-      if (!user) {
+      if (!smsResult) {
         response.sendStatus(404);
       } else {
+        const userPhone = await this.userPhoneService.getUserPhone(phoneNumber);
+        if (!userPhone) {
+          response.sendStatus(404);
+          return;
+        }
         const { data } = await this.externalService.asRequestUserToken({
-          userId: user.id,
+          userId: userPhone.user.id,
         });
         response.status(200).send(data);
       }
     } catch (err) {
       console.error("@Error: ", err);
-      response.sendStatus(500);
+      response.status(400).send("Invalid AuthCode");
+    }
+  }
+
+  @Post("login-with-pin")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Login with user credentials (PIN)" })
+  public async loginUserWithPIN(
+    @Body() userCredentials: LoginUserDto,
+    @Response() response: IResponse
+  ) {
+    let { phoneNumber, pinCode } = userCredentials;
+    phoneNumber = convert2StandardPhoneNumber(phoneNumber);
+    try {
+      const userPhone = await this.userPhoneService.getUserPhone(phoneNumber);
+      if (!userPhone) {
+        response.status(404).send("Phone No. not registered");
+        return;
+      } else {
+        const user = await this.userService.validateUser(
+          userPhone.user.email,
+          pinCode
+        );
+        if (!user) {
+          response.status(400).send("Invalid PIN");
+          return;
+        }
+        const { data } = await this.externalService.asRequestUserToken({
+          userId: userPhone.user.id,
+        });
+        response.status(200).send(data);
+      }
+    } catch (err) {
+      console.error("@Error: ", err);
+      response.status(400).send("Invalid PIN");
     }
   }
 
@@ -182,10 +227,9 @@ export class AppController {
     @Body() confirmDetails: RegisterConfirmDto,
     @Response() response: IResponse
   ) {
-    const {
+    let {
       email,
       phoneNumber,
-      password,
       smsAuthCode,
       smsNotificationId,
       firstName,
@@ -194,17 +238,25 @@ export class AppController {
       expYear,
       expMonth,
       cvc,
-      rId,
     } = confirmDetails;
     try {
-      const registration =
-        await this.userRegistrationService.getUserRegistration(rId);
-      if (
-        !registration ||
-        registration.verified ||
-        new Date().getTime() - registration.createdDate.getTime() > 3600 * 1000
-      ) {
-        response.status(400).send("Link already expired");
+      phoneNumber = convert2StandardPhoneNumber(phoneNumber);
+      const emailExisting = await this.userService.getUserByEmail(email);
+      if (emailExisting) {
+        response.status(400).send("Email already exists");
+        return;
+      }
+      if (!phoneNumber) {
+        response
+          .status(400)
+          .send("Please enter 10 digit phone number - no dashes or spaces");
+        return;
+      }
+      const phoneExisting = await this.userPhoneService.getUserPhone(
+        phoneNumber
+      );
+      if (phoneExisting) {
+        response.status(400).send("PhoneNumber already exists");
         return;
       }
       const smsResult = (
@@ -227,7 +279,7 @@ export class AppController {
 
           const user = await this.userService.saveUser({
             email,
-            password,
+            password: "None",
             firstName,
             lastName,
             verified: true,
@@ -240,19 +292,106 @@ export class AppController {
             phoneNumber,
             active: true,
           });
-          await this.userRegistrationService.updateRegistration(rId, {
-            verified: true,
-          });
+          const { data: tokenData } =
+            await this.externalService.asRequestUserToken({
+              userId: userPhone.user.id,
+            });
           response.send({
             message: "User registration confirmed",
             user,
             userPhone,
+            token: tokenData.token,
           });
         } catch (err) {
           response.status(400).send("Credit card information is incorrect");
         }
       }
     } catch (err) {
+      console.error("@Error: ", err);
+      response.status(400).send("Auth code is incorrect");
+    }
+  }
+
+  @Post("register-confirm-with-pin")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Confirms user registration with PIN" })
+  public async registerConfirmUserWithPIN(
+    @Body() confirmDetails: RegisterConfirmDto,
+    @Response() response: IResponse
+  ) {
+    let {
+      email,
+      phoneNumber,
+      pinCode,
+      firstName,
+      lastName,
+      cardNumber,
+      expYear,
+      expMonth,
+      cvc,
+    } = confirmDetails;
+    try {
+      phoneNumber = convert2StandardPhoneNumber(phoneNumber);
+      const emailExisting = await this.userService.getUserByEmail(email);
+      if (emailExisting) {
+        response.status(400).send("Email already exists");
+        return;
+      }
+      if (!phoneNumber) {
+        response
+          .status(400)
+          .send("Please enter 10 digit phone number - no dashes or spaces");
+        return;
+      }
+      const phoneExisting = await this.userPhoneService.getUserPhone(
+        phoneNumber
+      );
+      if (phoneExisting) {
+        response.status(400).send("PhoneNumber already exists");
+        return;
+      }
+      {
+        try {
+          const paymentData = await this.externalService.psSaveCC({
+            cardNumber,
+            expYear,
+            expMonth,
+            cvc,
+            customerEmail: email,
+            customerName: firstName + " " + lastName,
+          });
+
+          const user = await this.userService.saveUser({
+            email,
+            password: pinCode,
+            firstName,
+            lastName,
+            verified: true,
+            stripePmId: paymentData.pmId,
+            stripeCustomerId: paymentData.customerId,
+            tcFlag: true,
+          });
+          const userPhone = await this.userPhoneService.saveUserPhone({
+            user: { id: user.id },
+            phoneNumber,
+            active: true,
+          });
+          const { data: tokenData } =
+            await this.externalService.asRequestUserToken({
+              userId: userPhone.user.id,
+            });
+          response.send({
+            message: "User registration confirmed",
+            user,
+            userPhone,
+            token: tokenData.token,
+          });
+        } catch (err) {
+          response.status(400).send("Credit card information is incorrect");
+        }
+      }
+    } catch (err) {
+      console.error("@Error: ", err);
       response.status(400).send("Auth code is incorrect");
     }
   }
@@ -469,6 +608,68 @@ export class AppController {
     } catch (err) {
       console.error("@Error: ", err);
       response.sendStatus(401);
+    }
+  }
+
+  @Post("send-login-authcode")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Send Login authcode" })
+  public async sendLoginAuthCode(
+    @Body() body: SendLoginAuthcodeDto,
+    @Response() response: IResponse
+  ) {
+    let { phoneNumber } = body;
+    try {
+      phoneNumber = convert2StandardPhoneNumber(phoneNumber);
+      if (!phoneNumber) {
+        response
+          .status(400)
+          .send("Please enter 10 digit phone number - no dashes or spaces");
+        return;
+      }
+      const userPhone = await this.userPhoneService.getUserPhone(phoneNumber);
+      if (!userPhone) {
+        response.status(401).send("Phone No. not registered");
+        return;
+      }
+      // Saves a new event in the DB
+      const { data: notification } =
+        await this.externalService.nsSendSMSAuthCode({ phoneNumber });
+      response.status(200).send(notification);
+    } catch (error) {
+      console.error("@Error: ", error);
+      response.status(401).send("SMS code request error please try again");
+    }
+  }
+
+  @Post("send-register-authcode")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Send Register authcode" })
+  public async sendRegisterAuthCode(
+    @Body() body: SendLoginAuthcodeDto,
+    @Response() response: IResponse
+  ) {
+    let { phoneNumber } = body;
+    try {
+      phoneNumber = convert2StandardPhoneNumber(phoneNumber);
+      if (!phoneNumber) {
+        response
+          .status(400)
+          .send("Please enter 10 digit phone number - no dashes or spaces");
+        return;
+      }
+      const userPhone = await this.userPhoneService.getUserPhone(phoneNumber);
+      if (userPhone) {
+        response.status(401).send("Phone No. already registered");
+        return;
+      }
+      // Saves a new event in the DB
+      const { data: notification } =
+        await this.externalService.nsSendSMSAuthCode({ phoneNumber });
+      response.status(200).send(notification);
+    } catch (error) {
+      console.error("@Error: ", error);
+      response.status(401).send("SMS code request error please try again");
     }
   }
 
