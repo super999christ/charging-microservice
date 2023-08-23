@@ -27,9 +27,9 @@ export class AppModule {
     consumer
       .apply(AuthMiddleware)
       .forRoutes(
-        { path: "/app/profile", method: RequestMethod.GET },
-        { path: "/app/profile/password", method: RequestMethod.PUT },
-        { path: "/app/profile/creditcard", method: RequestMethod.PUT }
+        { path: "/profile", method: RequestMethod.GET },
+        { path: "/profile/password", method: RequestMethod.PUT },
+        { path: "/profile/creditcard", method: RequestMethod.PUT }
       );
   }
 }
