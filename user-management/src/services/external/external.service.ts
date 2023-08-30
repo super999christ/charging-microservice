@@ -9,8 +9,6 @@ import { ValidateSMSAuthCodeDto } from "./dtos/ValidateSMSAuthCode.dto";
 import { SendPasswordResetLink } from "./dtos/SendPasswordResetLink.dto";
 import { RequestUserTokenDto } from "./dtos/RequestUserToken";
 import { RequestUserTokenBodyDto } from "./dtos/RequestUserTokenBody";
-import { SaveCCDto } from "./dtos/SaveCC.dto";
-import { UpdateCCDto } from "./dtos/UpdateCC.dto";
 
 @Injectable()
 export class ExternalService {
@@ -22,21 +20,17 @@ export class ExternalService {
     return axios.get(`${Environment.SERVICE_LOGGER_URL}/logs`);
   }
 
-  public async neSendEmailAuthCode(
-    body: SendEmailAuthCodeDto
-  ) {
+  public async neSendEmailAuthCode(body: SendEmailAuthCodeDto) {
     return axios.post(
       `${Environment.SERVICE_NOTIFICATION_URL}/send-email-authcode`,
-      body,
+      body
     );
   }
 
-  public async neSendPasswordResetLink(
-    body: SendPasswordResetLink
-  ) {
+  public async neSendPasswordResetLink(body: SendPasswordResetLink) {
     return axios.post(
       `${Environment.SERVICE_NOTIFICATION_URL}/send-password-reset-request`,
-      body,
+      body
     );
   }
 
@@ -47,18 +41,14 @@ export class ExternalService {
     );
   }
 
-  public async nsSendSMSAuthCode(
-    body: SendSMSAuthCodeDto
-  ) {
+  public async nsSendSMSAuthCode(body: SendSMSAuthCodeDto) {
     return axios.post(
       `${Environment.SERVICE_NOTIFICATION_URL}/send-sms-authcode`,
       body
     );
   }
 
-  public async nsValidateSMSAuthCode(
-    body: ValidateSMSAuthCodeDto
-  ) {
+  public async nsValidateSMSAuthCode(body: ValidateSMSAuthCodeDto) {
     return axios.post(
       `${Environment.SERVICE_NOTIFICATION_URL}/validate-sms-authcode`,
       body
@@ -76,29 +66,6 @@ export class ExternalService {
     const { data } = await axios.post(
       `${Environment.SERVICE_API_AUTH_URL}/validate-user-token`,
       body
-    );
-    return data;
-  }
-
-  public async psSaveCC(body: SaveCCDto) {
-    const { data } = await axios.post(
-      `${Environment.SERVICE_PAYMENT_URL}/save-cc`,
-      body
-    );
-    return data;
-  }
-
-  public async psGetCC(pmId: string) {
-    const { data } = await axios.get(
-      `${Environment.SERVICE_PAYMENT_URL}/get-cc?pmId=${pmId}`,
-    );
-    return data;
-  }
-
-  public async psUpdateCC(body: UpdateCCDto) {
-    const { data } = await axios.put(
-      `${Environment.SERVICE_PAYMENT_URL}/update-cc`,
-      body,
     );
     return data;
   }

@@ -11,18 +11,6 @@ export class RegisterConfirmDto {
   lastName: string;
 
   @ApiProperty()
-  cardNumber: string;
-
-  @ApiProperty()
-  expYear: number;
-
-  @ApiProperty()
-  expMonth: number;
-
-  @ApiProperty()
-  cvc: string;
-
-  @ApiProperty()
   phoneNumber: string;
 
   @ApiProperty()

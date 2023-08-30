@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Inject,
+  Logger,
   Post,
   Put,
   Query,
@@ -24,7 +25,6 @@ import { RegisterUserDto } from "./dtos/RegisterUser.dto";
 import { ValidatePhoneDto } from "./dtos/ValidatePhone.dto";
 import { RequestResetPasswordDto } from "./dtos/RequestResetPassword.dto";
 import { ResetPasswordDto } from "./dtos/ResetPassword.dto";
-import { UpdateCreditCardDto } from "./dtos/UpdateCreditCard.dto";
 import { UpdatePasswordDto } from "./dtos/UpdatePassword.dto";
 import { AxiosError } from "axios";
 import { convert2StandardPhoneNumber } from "../utils/phone.util";
@@ -32,6 +32,8 @@ import { SendLoginAuthcodeDto } from "./dtos/SendLoginAuthcode.dto";
 
 @Controller()
 export class AppController {
+  private readonly logger = new Logger(AppController.name);
+
   @Inject()
   private userService: UserService;
 
@@ -234,10 +236,6 @@ export class AppController {
       smsNotificationId,
       firstName,
       lastName,
-      cardNumber,
-      expYear,
-      expMonth,
-      cvc,
     } = confirmDetails;
     try {
       phoneNumber = convert2StandardPhoneNumber(phoneNumber);
@@ -268,23 +266,12 @@ export class AppController {
       ).data;
       if (smsResult) {
         try {
-          const paymentData = await this.externalService.psSaveCC({
-            cardNumber,
-            expYear,
-            expMonth,
-            cvc,
-            customerEmail: email,
-            customerName: firstName + " " + lastName,
-          });
-
           const user = await this.userService.saveUser({
             email,
             password: "None",
             firstName,
             lastName,
             verified: true,
-            stripePmId: paymentData.pmId,
-            stripeCustomerId: paymentData.customerId,
             tcFlag: true,
           });
           const userPhone = await this.userPhoneService.saveUserPhone({
@@ -319,17 +306,7 @@ export class AppController {
     @Body() confirmDetails: RegisterConfirmDto,
     @Response() response: IResponse
   ) {
-    let {
-      email,
-      phoneNumber,
-      pinCode,
-      firstName,
-      lastName,
-      cardNumber,
-      expYear,
-      expMonth,
-      cvc,
-    } = confirmDetails;
+    let { email, phoneNumber, pinCode, firstName, lastName } = confirmDetails;
     try {
       phoneNumber = convert2StandardPhoneNumber(phoneNumber);
       const emailExisting = await this.userService.getUserByEmail(email);
@@ -350,49 +327,34 @@ export class AppController {
         response.status(400).send("PhoneNumber already exists");
         return;
       }
-      {
-        try {
-          const paymentData = await this.externalService.psSaveCC({
-            cardNumber,
-            expYear,
-            expMonth,
-            cvc,
-            customerEmail: email,
-            customerName: firstName + " " + lastName,
-          });
 
-          const user = await this.userService.saveUser({
-            email,
-            password: pinCode,
-            firstName,
-            lastName,
-            verified: true,
-            stripePmId: paymentData.pmId,
-            stripeCustomerId: paymentData.customerId,
-            tcFlag: true,
-          });
-          const userPhone = await this.userPhoneService.saveUserPhone({
-            user: { id: user.id },
-            phoneNumber,
-            active: true,
-          });
-          const { data: tokenData } =
-            await this.externalService.asRequestUserToken({
-              userId: userPhone.user.id,
-            });
-          response.send({
-            message: "User registration confirmed",
-            user,
-            userPhone,
-            token: tokenData.token,
-          });
-        } catch (err) {
-          response.status(400).send("Credit card information is incorrect");
+      const user = await this.userService.saveUser({
+        email,
+        password: pinCode,
+        firstName,
+        lastName,
+        verified: true,
+        tcFlag: true,
+      });
+      const userPhone = await this.userPhoneService.saveUserPhone({
+        user: { id: user.id },
+        phoneNumber,
+        active: true,
+      });
+      const { data: tokenData } = await this.externalService.asRequestUserToken(
+        {
+          userId: userPhone.user.id,
         }
-      }
+      );
+      response.send({
+        message: "User registration confirmed",
+        user,
+        userPhone,
+        token: tokenData.token,
+      });
     } catch (err) {
-      console.error("@Error: ", err);
-      response.status(400).send("Auth code is incorrect");
+      this.logger.error(JSON.stringify(err));
+      response.status(400).send("Failed to register user with pincode");
     }
   }
 
@@ -411,10 +373,9 @@ export class AppController {
         res.sendStatus(404);
         return;
       }
-      const paymentData = await this.externalService.psGetCC(user.stripePmId);
+
       const { id, firstName, lastName, email } = user;
       const { phoneNumber } = phone;
-      const { last4, expYear, expMonth } = paymentData;
 
       res.status(200).send({
         id,
@@ -422,9 +383,6 @@ export class AppController {
         lastName,
         phoneNumber,
         email,
-        last4,
-        expYear,
-        expMonth,
       });
     } catch (err) {
       console.error("@Error: ", err);
@@ -448,36 +406,6 @@ export class AppController {
       });
       response.send("success");
     } catch (err) {
-      if (err instanceof AxiosError)
-        response.status(500).send(err.response?.data);
-    }
-  }
-
-  @Put("profile/creditcard")
-  @ApiOperation({ summary: "Update Creditcard" })
-  @ApiBearerAuth()
-  public async updateCreditCard(
-    @Body() params: UpdateCreditCardDto,
-    @Request() req: IRequest,
-    @Response() response: IResponse
-  ) {
-    const { cardNumber, cvc, expYear, expMonth } = params;
-    const userId = (req as any).userId;
-    try {
-      const user = await this.userService.getUser(userId);
-      const { pmId } = await this.externalService.psUpdateCC({
-        cardNumber,
-        cvc,
-        expYear,
-        expMonth,
-        pmId: user?.stripePmId as string,
-      });
-      await this.userService.updateUserById(userId, {
-        stripePmId: pmId,
-      });
-      response.send("success");
-    } catch (err) {
-      console.log("@Error: ", err);
       if (err instanceof AxiosError)
         response.status(500).send(err.response?.data);
     }
