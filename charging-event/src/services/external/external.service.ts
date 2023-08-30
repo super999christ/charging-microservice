@@ -34,10 +34,11 @@ export class ExternalService {
     );
   }
 
-  public async psCompleteCharge(body: CompleteChargeDto) {
+  public async psCompleteCharge(body: CompleteChargeDto, authorization: string) {
     return axios.post(
       `${Environment.SERVICE_PAYMENT_URL}/complete-charge`,
-      body
+      body,
+      { headers: { Authorization: authorization } }
     );
   }
 };

@@ -47,6 +47,9 @@ export class ChargingEvent {
   @Column({ name: 'TotalChargeTime', type: 'float', default: 0 })
   totalChargeTime: number;
 
+  @Column({ name: 'SessionStatus', type: 'varchar', nullable: true })
+  sessionStatus: string;
+
   @Column({ name: 'RateActiveKWH', type: 'float', default: 0 })
   rateActivekWh: number;
 

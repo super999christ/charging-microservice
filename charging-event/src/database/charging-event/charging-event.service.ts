@@ -12,11 +12,19 @@ export class ChargingEventService {
     return this.chargingEventRepository.save(chargingEvent);
   }
 
+  public async deleteChargingEvent(eventId: number) {
+    return this.chargingEventRepository.delete(eventId);
+  }
+
   public async getChargingEvent(id: number) {
     return this.chargingEventRepository.findOneBy({ id });
   }
 
   public async getTransactions(phoneNumber: string) {
     return this.chargingEventRepository.find({ where: { phoneNumber, chargeDeliveredKwh: Not(0) }, order: { createdDate: 'DESC' } });
+  }
+
+  public async getLatestChargingEvents(phoneNumber: string) {
+    return this.chargingEventRepository.find({ where: { phoneNumber }, order: { createdDate: 'DESC' }, take: 5 });
   }
 }

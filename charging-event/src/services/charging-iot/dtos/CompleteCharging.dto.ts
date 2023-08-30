@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 
-export class CompleteChargeDto {  
+export class CompleteChargingDto {
   @ApiProperty()
-  amount: number;
-};
+  eventId: number;
+}

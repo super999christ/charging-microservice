@@ -4,8 +4,8 @@ import { ChargingStatusDto } from "./dtos/ChargingStatus.dto";
 import { ManageChargingDto } from "./dtos/ManageCharging.dto";
 import axios from "axios";
 import Environment from "../../config/env";
-import { getGlobalChargingStatus, setGlobalChargingStatus } from "../../utils/charging.util";
 import { SimulatorService } from "../simulator/simulator.service";
+import { CompleteChargingDto } from "./dtos/CompleteCharging.dto";
 
 @Injectable()
 export class ChargingIoTService {
@@ -30,14 +30,7 @@ export class ChargingIoTService {
     return axios
       .get(
         `${Environment.SERVICE_CHARGING_IOT_URL}/get-charging-status?eventId=${body.eventId}`
-      )
-      .then((res) => {
-        res.data.eventStatus = getGlobalChargingStatus(body.eventId);
-        return res;
-      })
-      .catch((err) => {
-        throw err;
-      });
+      );
   }
 
   public async manageCharging(body: ManageChargingDto) {
@@ -49,14 +42,22 @@ export class ChargingIoTService {
       .get(
         `${Environment.SERVICE_CHARGING_IOT_MANAGE_CHG_URL}/manage-charging?eventId=${body.eventId}&eventType=${body.eventType}`
       )
-      .then((res) => {
-        if (res.data.status) {
-          setGlobalChargingStatus(body.eventId, body.eventType);
-        }
-        return res;
-      })
       .catch((err) => {
         throw Error("Sorry, we're runnig into some issus. Please try again after sometime.");
       });
+  }
+
+  public async completeCharging(body: CompleteChargingDto) {
+    const simulatorData = await this.simulatorService.completeCharging(body);
+    if (simulatorData) {
+      return { data: simulatorData };
+    }
+    return axios
+      .get(
+        `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${body.eventId}`
+      )
+      .catch((err) => {
+        throw Error("Sorry, we're running into some issues. Please try again after sometime.");
+      })
   }
 }

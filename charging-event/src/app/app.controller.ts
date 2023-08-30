@@ -30,6 +30,45 @@ export class AppController {
   @Inject()
   private chargingIoTService: ChargingIoTService;
 
+  @Get("active-session")
+  @ApiOperation({ summary: "Finds the latest active charging session" })
+  @ApiBearerAuth()
+  public async activeSession(
+    @Request() request: IRequest,
+    @Response() response: IResponse
+  ) {
+    try {
+      const user = (
+        await this.externalService.umGetProfile(
+          String(request.headers["authorization"])
+        )
+      ).data;
+      const chargingEvents =
+        await this.chargingEventService.getLatestChargingEvents(
+          user.phoneNumber
+        );
+      if (!chargingEvents.length || chargingEvents[0].sessionStatus) {
+        throw Error("No active charging session");
+      }
+      const { data: chargingStatus } =
+        await this.chargingIoTService.getChargingStatus({
+          eventId: chargingEvents[0].id,
+          phoneNumber: chargingEvents[0].phoneNumber,
+          stationId: chargingEvents[0].stationId,
+        });
+      if (chargingStatus.status && chargingStatus.sessionStatus === "charging")
+        response.send(chargingEvents[0]);
+      else {
+        throw Error("No active charging session");
+      }
+    } catch (error) {
+      console.error("@Error: ", error);
+      response.status(404).send({
+        message: "No active charging session",
+      });
+    }
+  }
+
   @Post("start-charge")
   @ApiOperation({ summary: "Start Charging" })
   @ApiBearerAuth()
@@ -77,18 +116,21 @@ export class AppController {
             token: data.token,
             ...chargingEvent,
           });
+          return;
         } else {
           response.status(500).send({
             message: "Unable to start charging please try back after some time",
           });
+          return;
         }
       } else {
+        await this.chargingEventService.deleteChargingEvent(chargingEvent.id);
         response.status(400).send({
           message:
-            "Charging Session not available please try back after some time",
+            "NOTE: You must plug charger into car before pressing start.",
         });
+        return;
       }
-      response.status(200).send(chargingEvent);
     } catch (error) {
       console.error("@Error: ", error);
       response.status(401).send({
@@ -151,7 +193,7 @@ export class AppController {
         } else {
           response.status(400).send({
             message:
-              "Charging Session not available please try back after some time",
+              "NOTE: You must plug charger into car before pressing start.",
           });
         }
       } else {
@@ -168,6 +210,7 @@ export class AppController {
   @ApiBearerAuth()
   public async checkEventAvailability(
     @Query("eventId") eventId: number,
+    @Request() request: IRequest,
     @Response() response: IResponse
   ) {
     const chargingEvent = await this.chargingEventService.getChargingEvent(
@@ -185,6 +228,7 @@ export class AppController {
   @ApiBearerAuth()
   public async chargingStatus(
     @Body() body: ChargingStatusDto,
+    @Request() request: IRequest,
     @Response() response: IResponse
   ) {
     try {
@@ -204,11 +248,16 @@ export class AppController {
         userId: userPhone.user.id,
       });
       status.token = auth.token;
-      if (status.status && status.chargeComplete) {
+      if (
+        status.status &&
+        (status.chargeComplete ||
+          ["idle", "offline"].includes(status.sessionStatus))
+      ) {
         if (chargingEvent) {
-          if (chargingEvent.totalCostDollars) {
+          if (chargingEvent.sessionStatus) {
             console.error("@Error: duplicated charging ", chargingEvent);
-            status.error = "";
+            status.sessionStatus = chargingEvent.sessionStatus;
+            status.sessionTotalCost = chargingEvent.totalCostDollars;
             response.send(status);
             return;
           }
@@ -218,26 +267,47 @@ export class AppController {
           chargingEvent.chargeVehicleRequestedKwh =
             status.chargeVehicleRequestedKwh;
           chargingEvent.rateActivekWh = status.rateActivekWh;
-          chargingEvent.totalCostDollars = Math.max(
-            status.sessionTotalCost,
-            0.5
-          );
           chargingEvent.totalChargeTime = status.sessionTotalDuration;
+          chargingEvent.sessionStatus = status.sessionStatus;
+
+          const { data: chargingData } =
+            await this.chargingIoTService.completeCharging({
+              eventId: body.eventId,
+            });
+          chargingEvent.totalCostDollars =
+            chargingData.sessionTotalCost &&
+            Math.max(chargingData.sessionTotalCost, 0.5);
+          if (status.chargeComplete) chargingEvent.sessionStatus = "completed";
+          else chargingEvent.sessionStatus = status.sessionStatus;
           await this.chargingEventService.saveChargingEvent(chargingEvent);
 
           try {
-            await this.externalService.psCompleteCharge({
-              pmId: userPhone.user.stripePmId,
-              cusId: userPhone.user.stripeCustomerId,
-              amount: chargingEvent.totalCostDollars,
-            });
+            if (chargingEvent.totalCostDollars) {
+              await this.externalService.psCompleteCharge(
+                {
+                  amount: chargingEvent.totalCostDollars,
+                },
+                request.headers.authorization as string
+              );
+            }
           } catch (err) {
-            console.error("@Error: ", err);
+            console.error(
+              "@PaymentError: ",
+              chargingEvent.totalCostDollars,
+              userPhone.user,
+              err
+            );
             status.error = "Payment failed";
+            response.send(status);
+            return;
           }
         } else {
           throw Error("ChargingEvent not found");
         }
+      }
+      if (chargingEvent.sessionStatus) {
+        status.sessionStatus = chargingEvent.sessionStatus;
+        status.sessionTotalCost = chargingEvent.totalCostDollars;
       }
       response.send(status);
     } catch (err) {
@@ -251,6 +321,7 @@ export class AppController {
   @ApiBearerAuth()
   public async manageCharging(
     @Body() body: ManageChargingDto,
+    @Request() request: IRequest,
     @Response() response: IResponse
   ) {
     try {
@@ -258,7 +329,7 @@ export class AppController {
         body.eventId
       );
       if (chargingEvent) {
-        const { data: userPhone } = await this.externalService.umValidatePhone({
+        await this.externalService.umValidatePhone({
           phoneNumber: chargingEvent.phoneNumber,
         });
         const { data: result } = await this.chargingIoTService.manageCharging(
@@ -272,18 +343,27 @@ export class AppController {
               stationId: chargingEvent.stationId,
             });
           try {
-            if (chargingEvent.totalCostDollars) {
+            if (chargingEvent.sessionStatus) {
               console.error("@Error: duplicated charging ", chargingEvent);
               result.error = "";
               response.send(result);
               return;
             }
-            console.log("@User: ", userPhone, status);
-            await this.externalService.psCompleteCharge({
-              pmId: userPhone.user.stripePmId,
-              cusId: userPhone.user.stripeCustomerId,
-              amount: status.sessionTotalCost,
-            });
+            const { data: chargingData } =
+              await this.chargingIoTService.completeCharging({
+                eventId: body.eventId,
+              });
+            chargingEvent.totalCostDollars =
+              chargingData.sessionTotalCost &&
+              Math.max(chargingData.sessionTotalCost, 0.5);
+            if (chargingEvent.totalCostDollars) {
+              await this.externalService.psCompleteCharge(
+                {
+                  amount: chargingEvent.totalCostDollars,
+                },
+                request.headers.authorization as string
+              );
+            }
           } catch (err) {
             console.error("@Error: ", err);
             result.error = "Payment failed";
@@ -294,11 +374,8 @@ export class AppController {
           chargingEvent.chargeVehicleRequestedKwh =
             status.chargeVehicleRequestedKwh;
           chargingEvent.rateActivekWh = status.rateActivekWh;
-          chargingEvent.totalCostDollars = Math.max(
-            status.sessionTotalCost,
-            0.5
-          );
           chargingEvent.totalChargeTime = status.sessionTotalDuration;
+          chargingEvent.sessionStatus = "stopped";
           await this.chargingEventService.saveChargingEvent(chargingEvent);
         }
         response.send(result);

@@ -5,22 +5,22 @@ services:
     image: 101265448075.dkr.ecr.us-west-2.amazonaws.com/charging/charging-user-management:latest
     build:
       context: ./
-      dockerfile: ./apps/user-management/Dockerfile
+      dockerfile: ./user-management/Dockerfile
     env_file:
       - .env
     ports:
       - 3003:3003
     volumes:
-      - .:/apps/user-management
+      - .:/user-management
 
   service_charging_event:
     image: 101265448075.dkr.ecr.us-west-2.amazonaws.com/charging/charging-events:latest
     build:
       context: ./
-      dockerfile: ./apps/charging-event/Dockerfile
+      dockerfile: ./charging-event/Dockerfile
     env_file:
       - .env
     ports:
       - 3004:3004
     volumes:
-      - .:/apps/charging-event
+      - .:/charging-event

@@ -1,0 +1,36 @@
+{
+  "CheckConnectivity": {
+    "eventId": 100,
+    "status": 1,
+    "error": ""
+  },
+  "ChargingStatus": {
+    "eventId": 100,
+    "status": 1,
+    "chargeComplete": 0,
+    "chargeStatusPercentage": 13,
+    "chargeDeliveredKwh": 0.07,
+    "chargeSpeedKwh": 2.48,
+    "chargeVehicleRequestedKwh": 2754,
+    "rateActivekWh": 0.42,
+    "sessionTotalCost": 0.03,
+    "sessionTotalDuration": 150,
+    "sessionStatus": "idle"
+  },
+  "ManageCharging": {
+    "eventId": 100,
+    "status": 1,
+    "error": ""
+  },
+  "CompleteCharging": {
+    "eventId": 100,
+    "status": 1,
+    "chargeStatusPercentage": 13,
+    "chargeDeliveredKwh": 0.07,
+    "chargeSpeedKwh": 2.48,
+    "chargeVehicleRequestedKwh": 2754,
+    "rateActivekWh": 0.42,
+    "sessionTotalCost": 0.07,
+    "sessionTotalDuration": 150
+  }
+}
