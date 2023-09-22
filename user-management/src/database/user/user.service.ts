@@ -38,6 +38,11 @@ export class UserService {
     return user || null;
   }
 
+  public async getUserByPhone(phoneNumber: string) {
+    const user = await this.userRepository.findOneBy({ phoneNumber });
+    return user || null;
+  }
+
   public async resetPassword(email: string, password: string) {
     const hashedPassword = await bcrypt.hash(password!, Environment.HASH_SALT);
     const user = await this.userRepository.update(

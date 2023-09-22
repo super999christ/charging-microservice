@@ -1,8 +1,8 @@
 import { Module, RequestMethod, MiddlewareConsumer } from "@nestjs/common";
+import { LoggerModule } from "nestjs-pino";
 import { ConfigModule } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { typeOrmConfig } from "../typeorm/typeorm.config";
-import { UserPhoneModule } from "../database/user-phone/user-phone.module";
 import { UserModule } from "../database/user/user.module";
 import { UserRegistrationModule } from "../database/user-registration/user-registration.module";
 import { PasswordResetModule } from "../database/password-reset/password-reset.module";
@@ -15,10 +15,12 @@ import { AuthMiddleware } from "../middlewares/auth.middleware";
   imports: [
     ConfigModule.forRoot(),
     TypeOrmModule.forRoot(typeOrmConfig),
+    LoggerModule.forRoot({
+      exclude: [{ method: RequestMethod.ALL, path: "healthz" }]
+    }),
     UserModule,
     UserRegistrationModule,
     PasswordResetModule,
-    UserPhoneModule,
     ExternalModule,
   ],
 })

@@ -14,6 +14,9 @@ export class User {
   @Column({ name: "Email", type: "varchar" })
   email: string;
 
+  @Column({ name: "PhoneNumber", type: "varchar", nullable: true })
+  phoneNumber: string;
+
   @Column({ name: "Password", type: "varchar" })
   password: string;
 
@@ -32,11 +35,8 @@ export class User {
   @Column({ name: "TCFlag", type: "bool", default: false })
   tcFlag: boolean;
 
-  @Column({ name: "StripePaymentMethodId", type: "varchar", default: "" })
-  stripePmId: string;
-
-  @Column({ name: "StripeCustomerId", type: "varchar", default: "" })
-  stripeCustomerId: string;
+  @Column({ name: "ChargingNotify", type: "bool", default: false })
+  chargingNotify: boolean;
 
   @CreateDateColumn({ type: 'timestamptz', name: "CreatedDate" })
   createdDate: Date;

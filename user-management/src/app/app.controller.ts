@@ -13,8 +13,8 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { Response as IResponse, Request as IRequest } from "express";
+import { PinoLogger, InjectPinoLogger } from "nestjs-pino";
 
-import { UserPhoneService } from "../database/user-phone/user-phone.service";
 import { UserService } from "../database/user/user.service";
 import { PasswordResetService } from "../database/password-reset/password-reset.service";
 import { UserRegistrationService } from "../database/user-registration/user-registration.service";
@@ -30,9 +30,10 @@ import { AxiosError } from "axios";
 import { convert2StandardPhoneNumber } from "../utils/phone.util";
 import { SendLoginAuthcodeDto } from "./dtos/SendLoginAuthcode.dto";
 
-@Controller()
+@Controller("app")
 export class AppController {
-  private readonly logger = new Logger(AppController.name);
+  @InjectPinoLogger(AppController.name)
+  private readonly logger: PinoLogger;
 
   @Inject()
   private userService: UserService;
@@ -42,9 +43,6 @@ export class AppController {
 
   @Inject()
   private passwordResetService: PasswordResetService;
-
-  @Inject()
-  private userPhoneService: UserPhoneService;
 
   @Inject()
   private externalService: ExternalService;
@@ -68,18 +66,18 @@ export class AppController {
       if (!smsResult) {
         response.sendStatus(404);
       } else {
-        const userPhone = await this.userPhoneService.getUserPhone(phoneNumber);
-        if (!userPhone) {
+        const user = await this.userService.getUserByPhone(phoneNumber);
+        if (!user) {
           response.sendStatus(404);
           return;
         }
         const { data } = await this.externalService.asRequestUserToken({
-          userId: userPhone.user.id,
+          userId: user.id,
         });
         response.status(200).send(data);
       }
     } catch (err) {
-      console.error("@Error: ", err);
+      this.logger.error(err);
       response.status(400).send("Invalid AuthCode");
     }
   }
@@ -94,27 +92,27 @@ export class AppController {
     let { phoneNumber, pinCode } = userCredentials;
     phoneNumber = convert2StandardPhoneNumber(phoneNumber);
     try {
-      const userPhone = await this.userPhoneService.getUserPhone(phoneNumber);
-      if (!userPhone) {
-        response.status(404).send("Phone No. not registered");
+      let user = await this.userService.getUserByPhone(phoneNumber);
+      if (!user) {
+        response.status(404).send("Phone number not registered");
         return;
       } else {
-        const user = await this.userService.validateUser(
-          userPhone.user.email,
+        user = await this.userService.validateUser(
+          user.email,
           pinCode
         );
         if (!user) {
-          response.status(400).send("Invalid PIN");
+          response.status(400).send("Invalid Password");
           return;
         }
         const { data } = await this.externalService.asRequestUserToken({
-          userId: userPhone.user.id,
+          userId: user.id,
         });
         response.status(200).send(data);
       }
     } catch (err) {
-      console.error("@Error: ", err);
-      response.status(400).send("Invalid PIN");
+      this.logger.error(err);
+      response.status(400).send("Invalid Password");
     }
   }
 
@@ -139,11 +137,11 @@ export class AppController {
           .send("Please enter 10 digit phone number - no dashes or spaces");
         return;
       }
-      const phoneExisting = await this.userPhoneService.getUserPhone(
+      const phoneExisting = await this.userService.getUserByPhone(
         phoneNumber
       );
       if (phoneExisting) {
-        response.status(400).send("PhoneNumber already exists");
+        response.status(400).send("Phone number already exists");
         return;
       }
       const smsNotification = (
@@ -173,7 +171,7 @@ export class AppController {
         smsNotificationId: smsNotification.id,
       });
     } catch (err) {
-      console.error("@Error: ", err);
+      this.logger.error(err);
       response.sendStatus(500);
     }
   }
@@ -191,7 +189,7 @@ export class AppController {
       );
       response.send(result);
     } catch (err) {
-      console.error("@Error: ", err);
+      this.logger.error(err);
       response.sendStatus(500);
     }
   }
@@ -217,7 +215,7 @@ export class AppController {
       }
       response.send(result);
     } catch (err) {
-      console.error("@Error: ", err);
+      this.logger.error(err);
       response.sendStatus(500);
     }
   }
@@ -250,7 +248,7 @@ export class AppController {
           .send("Please enter 10 digit phone number - no dashes or spaces");
         return;
       }
-      const phoneExisting = await this.userPhoneService.getUserPhone(
+      const phoneExisting = await this.userService.getUserByPhone(
         phoneNumber
       );
       if (phoneExisting) {
@@ -273,20 +271,15 @@ export class AppController {
             lastName,
             verified: true,
             tcFlag: true,
-          });
-          const userPhone = await this.userPhoneService.saveUserPhone({
-            user: { id: user.id },
-            phoneNumber,
-            active: true,
+            phoneNumber
           });
           const { data: tokenData } =
             await this.externalService.asRequestUserToken({
-              userId: userPhone.user.id,
+              userId: user.id,
             });
           response.send({
             message: "User registration confirmed",
             user,
-            userPhone,
             token: tokenData.token,
           });
         } catch (err) {
@@ -294,7 +287,7 @@ export class AppController {
         }
       }
     } catch (err) {
-      console.error("@Error: ", err);
+      this.logger.error(err);
       response.status(400).send("Auth code is incorrect");
     }
   }
@@ -320,11 +313,11 @@ export class AppController {
           .send("Please enter 10 digit phone number - no dashes or spaces");
         return;
       }
-      const phoneExisting = await this.userPhoneService.getUserPhone(
+      const phoneExisting = await this.userService.getUserByPhone(
         phoneNumber
       );
       if (phoneExisting) {
-        response.status(400).send("PhoneNumber already exists");
+        response.status(400).send("Phone number already exists");
         return;
       }
 
@@ -335,25 +328,20 @@ export class AppController {
         lastName,
         verified: true,
         tcFlag: true,
-      });
-      const userPhone = await this.userPhoneService.saveUserPhone({
-        user: { id: user.id },
-        phoneNumber,
-        active: true,
+        phoneNumber
       });
       const { data: tokenData } = await this.externalService.asRequestUserToken(
         {
-          userId: userPhone.user.id,
+          userId: user.id,
         }
       );
       response.send({
         message: "User registration confirmed",
         user,
-        userPhone,
         token: tokenData.token,
       });
     } catch (err) {
-      this.logger.error(JSON.stringify(err));
+      this.logger.error(err);
       response.status(400).send("Failed to register user with pincode");
     }
   }
@@ -368,14 +356,12 @@ export class AppController {
     const userId = (req as any).userId;
     try {
       const user = await this.userService.getUser(userId);
-      const phone = await this.userPhoneService.getPhoneNumberByUserId(userId);
-      if (!user || !phone) {
+      if (!user) {
         res.sendStatus(404);
         return;
       }
 
-      const { id, firstName, lastName, email } = user;
-      const { phoneNumber } = phone;
+      const { id, firstName, lastName, email, phoneNumber } = user;
 
       res.status(200).send({
         id,
@@ -385,7 +371,7 @@ export class AppController {
         email,
       });
     } catch (err) {
-      console.error("@Error: ", err);
+      this.logger.error(err);
       res.sendStatus(500);
     }
   }
@@ -421,14 +407,14 @@ export class AppController {
     let { phoneNumber } = body;
     phoneNumber = convert2StandardPhoneNumber(phoneNumber);
     try {
-      const userPhone = await this.userPhoneService.getUserPhone(phoneNumber);
-      if (!userPhone) {
+      const user = await this.userService.getUserByPhone(phoneNumber);
+      if (!user) {
         res.sendStatus(404);
         return;
       }
-      res.status(200).send(userPhone);
+      res.status(200).send(user);
     } catch (err) {
-      console.error("@Error: ", err);
+      this.logger.error(err);
       res.sendStatus(500);
     }
   }
@@ -470,7 +456,7 @@ export class AppController {
         emailNotificationId: emailNotification.id,
       });
     } catch (err) {
-      console.error("@Error: ", err);
+      this.logger.error(err);
       response.sendStatus(500);
     }
   }
@@ -488,7 +474,7 @@ export class AppController {
       );
       response.send(result);
     } catch (err) {
-      console.error("@Error: ", err);
+      this.logger.error(err);
       response.sendStatus(500);
     }
   }
@@ -517,7 +503,7 @@ export class AppController {
       });
       response.send(result);
     } catch (err) {
-      console.error("@Error: ", err);
+      this.logger.error(err);
       response.sendStatus(500);
     }
   }
@@ -534,7 +520,7 @@ export class AppController {
       const data = this.userService.resetPassword(email, password);
       response.send("success");
     } catch (err) {
-      console.error("@Error: ", err);
+      this.logger.error(err);
       response.sendStatus(401);
     }
   }
@@ -555,17 +541,17 @@ export class AppController {
           .send("Please enter 10 digit phone number - no dashes or spaces");
         return;
       }
-      const userPhone = await this.userPhoneService.getUserPhone(phoneNumber);
-      if (!userPhone) {
-        response.status(401).send("Phone No. not registered");
+      const user = await this.userService.getUserByPhone(phoneNumber);
+      if (!user) {
+        response.status(401).send("Phone number not registered");
         return;
       }
       // Saves a new event in the DB
       const { data: notification } =
         await this.externalService.nsSendSMSAuthCode({ phoneNumber });
       response.status(200).send(notification);
-    } catch (error) {
-      console.error("@Error: ", error);
+    } catch (err) {
+      this.logger.error(err);
       response.status(401).send("SMS code request error please try again");
     }
   }
@@ -586,23 +572,23 @@ export class AppController {
           .send("Please enter 10 digit phone number - no dashes or spaces");
         return;
       }
-      const userPhone = await this.userPhoneService.getUserPhone(phoneNumber);
-      if (userPhone) {
-        response.status(401).send("Phone No. already registered");
+      const user = await this.userService.getUserByPhone(phoneNumber);
+      if (user) {
+        response.status(401).send("Phone number already registered");
         return;
       }
       // Saves a new event in the DB
       const { data: notification } =
         await this.externalService.nsSendSMSAuthCode({ phoneNumber });
       response.status(200).send(notification);
-    } catch (error) {
-      console.error("@Error: ", error);
+    } catch (err) {
+      this.logger.error(err);
       response.status(401).send("SMS code request error please try again");
     }
   }
 
   @Get("healthz")
-  public async healthz(@Response() response: IResponse) {
-    return response.sendStatus(200);
+  public async healthz(@Response() res: IResponse) {
+    return res.sendStatus(200);
   }
 }
