@@ -30,7 +30,7 @@ import { AxiosError } from "axios";
 import { convert2StandardPhoneNumber } from "../utils/phone.util";
 import { SendLoginAuthcodeDto } from "./dtos/SendLoginAuthcode.dto";
 
-@Controller("app")
+@Controller()
 export class AppController {
   @InjectPinoLogger(AppController.name)
   private readonly logger: PinoLogger;

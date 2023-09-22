@@ -17,6 +17,8 @@ const Environment = {
   SERVICE_CHARGING_IOT_CHECK_CON_URL: String(process.env['SERVICE_CHARGING_IOT_CHECK_CON_URL']),
   SERVICE_CHARGING_IOT_MANAGE_CHG_URL: String(process.env['SERVICE_CHARGING_IOT_MANAGE_CHG_URL']),
   SERVICE_CHARGING_IOT_COMPLETE_CHG_URL: String(process.env['SERVICE_CHARGING_IOT_COMPLETE_CHG_URL']),
+  PROMO1_FROM_DATE: new Date(process.env['PROMO1_FROM_DATE'] as string),
+  PROMO1_TO_DATE: new Date(process.env['PROMO1_TO_DATE'] as string),
 };
 
 export default Environment;

@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2020",
+    "sourceMap": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "module": "commonjs",

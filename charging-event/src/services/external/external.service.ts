@@ -4,8 +4,8 @@ import axios from "axios";
 import Environment from "../../config/env";
 import { SendSMSAuthCodeDto } from "./dtos/SendSMSAuthCode.dto";
 import { ValidateSMSAuthCodeDto } from "./dtos/ValidateSMSAuthCode.dto";
-import { RequestUserTokenDto } from "./dtos/RequestUserToken.dto";
 import { CompleteChargeDto } from "./dtos/CompleteCharge.dto";
+import { SendEventCompletedDto } from "./dtos/SendEventCompleted.dto";
 
 @Injectable()
 export class ExternalService {
@@ -27,18 +27,18 @@ export class ExternalService {
     return axios.post(`${Environment.SERVICE_NOTIFICATION_URL}/validate-sms-authcode`, body);
   }
 
-  public async asRequestUserToken(body: RequestUserTokenDto) {
-    return axios.post(
-      `${Environment.SERVICE_API_AUTH_URL}/request-user-token`,
-      body
-    );
-  }
-
   public async psCompleteCharge(body: CompleteChargeDto, authorization: string) {
     return axios.post(
       `${Environment.SERVICE_PAYMENT_URL}/complete-charge`,
       body,
       { headers: { Authorization: authorization } }
+    );
+  }
+
+  public async nsSendEventCompleted(body: SendEventCompletedDto) {
+    return axios.post(
+      `${Environment.SERVICE_NOTIFICATION_URL}/send-event-completed`,
+      body
     );
   }
 };

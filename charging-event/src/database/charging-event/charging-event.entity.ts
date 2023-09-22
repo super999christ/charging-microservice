@@ -53,6 +53,12 @@ export class ChargingEvent {
   @Column({ name: 'RateActiveKWH', type: 'float', default: 0 })
   rateActivekWh: number;
 
+  @Column({ name: 'ExceptionStatus', type: 'varchar', nullable: true })
+  exceptionStatus: string;
+
+  @Column({ name: 'PaymentIntentId', type: 'varchar', nullable: true })
+  paymentIntentId: string;
+
   @Column({ name: 'SMSAuthValid', type: 'bool', default: false })
   smsAuthValid: boolean;
 

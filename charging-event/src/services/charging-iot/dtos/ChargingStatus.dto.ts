@@ -9,4 +9,7 @@ export class ChargingStatusDto {
 
   @ApiProperty()
   stationId: number;
+
+  @ApiProperty()
+  iotException?: boolean;
 };
