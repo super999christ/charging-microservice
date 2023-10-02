@@ -276,9 +276,14 @@ export class AppController {
 
           try {
             if (!chargingEvent.paymentIntentId && chargingEvent.totalCostDollars && !transactionLock[chargingEvent.id]) {
-              const today = new Date();
+              const timeZone = 'America/Los_Angeles';
+              const today = new Date().toLocaleString('sv', { timeZone });
+              const PROMO1_FROM_DATE = Environment.PROMO1_FROM_DATE.toLocaleString('sv', { timeZone });
+              const PROMO1_TO_DATE = Environment.PROMO1_TO_DATE.toLocaleString('sv', { timeZone });
+
               let actualCost = chargingEvent.totalCostDollars;
-              if (today >= Environment.PROMO1_FROM_DATE && today < Environment.PROMO1_TO_DATE) {
+              this.logger.info(`Is charging event time '${today}' within promotion time range '${PROMO1_FROM_DATE}' to '${PROMO1_TO_DATE}': ${PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE}`);
+              if (PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE) {
                 actualCost = Math.min(actualCost, 1);
                 status.promoted = true;
               }
@@ -355,11 +360,16 @@ export class AppController {
             });
             chargingEvent.totalCostDollars = Number(chargingData.sessionTotalCost) && Math.max(chargingData.sessionTotalCost, 0.5);
             if (!chargingEvent.paymentIntentId && chargingEvent.totalCostDollars && !transactionLock[chargingEvent.id]) {
-              const today = new Date();
+              const timeZone = 'America/Los_Angeles';
+              const today = new Date().toLocaleString('sv', { timeZone });
+              const PROMO1_FROM_DATE = Environment.PROMO1_FROM_DATE.toLocaleString('sv', { timeZone });
+              const PROMO1_TO_DATE = Environment.PROMO1_TO_DATE.toLocaleString('sv', { timeZone });
+
               let actualCost = chargingEvent.totalCostDollars;
-              if (today >= Environment.PROMO1_FROM_DATE && today < Environment.PROMO1_TO_DATE) {
+              this.logger.info(`Is charging event time '${today}' within promotion time range '${PROMO1_FROM_DATE}' to '${PROMO1_TO_DATE}': ${PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE}`);
+              if (PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE) {
                 actualCost = Math.min(actualCost, 1);
-                status.promoted = true;
+                result.promoted = true;
               }
               transactionLock[chargingEvent.id] = true;
               const { data: paymentIntent } = await this.externalService.psCompleteCharge({

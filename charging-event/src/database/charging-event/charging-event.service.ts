@@ -43,7 +43,7 @@ export class ChargingEventService {
   }
 
   public async getPendingChargingEvents() {
-    const dateThreshold = new Date(new Date().getTime() - 3600 * 1000 * 2);
+    const dateThreshold = new Date(new Date().getTime() - 3600 * 1000 * 4);
     return this.chargingEventRepository.find({
       where: [
         { sessionStatus: "in_progress", updatedDate: LessThan(dateThreshold) },

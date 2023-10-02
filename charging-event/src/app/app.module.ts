@@ -8,6 +8,7 @@ import { ExternalModule } from "../services/external/external.module";
 import { typeOrmConfig } from "../typeorm/typeorm.config";
 import { AppController } from "./app.controller";
 import { ChargingIoTModule } from "../services/charging-iot/charging-iot.module";
+import { CronModule } from "../services/cron/cron.module";
 
 @Module({
   controllers: [AppController],
@@ -19,7 +20,8 @@ import { ChargingIoTModule } from "../services/charging-iot/charging-iot.module"
     }),
     ChargingEventModule,
     ExternalModule,
-    ChargingIoTModule
+    ChargingIoTModule,
+    CronModule,
   ],
 })
 export class AppModule {
