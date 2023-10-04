@@ -97,10 +97,7 @@ export class AppController {
         response.status(404).send("Phone number not registered");
         return;
       } else {
-        user = await this.userService.validateUser(
-          user.email,
-          pinCode
-        );
+        user = await this.userService.validateUser(user.email, pinCode);
         if (!user) {
           response.status(400).send("Invalid Password");
           return;
@@ -137,9 +134,7 @@ export class AppController {
           .send("Please enter 10 digit phone number - no dashes or spaces");
         return;
       }
-      const phoneExisting = await this.userService.getUserByPhone(
-        phoneNumber
-      );
+      const phoneExisting = await this.userService.getUserByPhone(phoneNumber);
       if (phoneExisting) {
         response.status(400).send("Phone number already exists");
         return;
@@ -248,9 +243,7 @@ export class AppController {
           .send("Please enter 10 digit phone number - no dashes or spaces");
         return;
       }
-      const phoneExisting = await this.userService.getUserByPhone(
-        phoneNumber
-      );
+      const phoneExisting = await this.userService.getUserByPhone(phoneNumber);
       if (phoneExisting) {
         response.status(400).send("PhoneNumber already exists");
         return;
@@ -271,7 +264,7 @@ export class AppController {
             lastName,
             verified: true,
             tcFlag: true,
-            phoneNumber
+            phoneNumber,
           });
           const { data: tokenData } =
             await this.externalService.asRequestUserToken({
@@ -313,9 +306,7 @@ export class AppController {
           .send("Please enter 10 digit phone number - no dashes or spaces");
         return;
       }
-      const phoneExisting = await this.userService.getUserByPhone(
-        phoneNumber
-      );
+      const phoneExisting = await this.userService.getUserByPhone(phoneNumber);
       if (phoneExisting) {
         response.status(400).send("Phone number already exists");
         return;
@@ -328,7 +319,7 @@ export class AppController {
         lastName,
         verified: true,
         tcFlag: true,
-        phoneNumber
+        phoneNumber,
       });
       const { data: tokenData } = await this.externalService.asRequestUserToken(
         {
@@ -355,7 +346,9 @@ export class AppController {
   ) {
     const userId = (req as any).userId;
     try {
+      this.logger.info(`User id: ${userId}`);
       const user = await this.userService.getUser(userId);
+      this.logger.info(`User id returned from user table: ${user!.id}`);
       if (!user) {
         res.sendStatus(404);
         return;
