@@ -16,7 +16,7 @@ import { AuthMiddleware } from "../middlewares/auth.middleware";
     ConfigModule.forRoot(),
     TypeOrmModule.forRoot(typeOrmConfig),
     LoggerModule.forRoot({
-      exclude: [{ method: RequestMethod.ALL, path: "healthz" }]
+      exclude: [{ method: RequestMethod.ALL, path: "healthz" }],
     }),
     UserModule,
     UserRegistrationModule,
@@ -29,8 +29,8 @@ export class AppModule {
     consumer
       .apply(AuthMiddleware)
       .forRoutes(
-        { path: "/app/profile", method: RequestMethod.GET },
-        { path: "/app/profile/password", method: RequestMethod.PUT }
+        { path: "/profile", method: RequestMethod.GET },
+        { path: "/profile/password", method: RequestMethod.PUT }
       );
   }
 }

@@ -55,12 +55,12 @@ export class UserService {
   public async updateUserById(userId: string, userDetails: DeepPartial<User>) {
     const userInfo = { ...userDetails };
     if (userInfo.password) {
-      userInfo.password = await bcrypt.hash(userInfo.password, Environment.HASH_SALT);
+      userInfo.password = await bcrypt.hash(
+        userInfo.password,
+        Environment.HASH_SALT
+      );
     }
-    const user = await this.userRepository.update(
-      { id: userId },
-      userInfo
-    );
+    const user = await this.userRepository.update({ id: userId }, userInfo);
     return user;
   }
 }
