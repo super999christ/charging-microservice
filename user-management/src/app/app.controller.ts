@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Inject,
-  Logger,
   Post,
   Put,
   Query,
@@ -29,6 +28,9 @@ import { UpdatePasswordDto } from "./dtos/UpdatePassword.dto";
 import { AxiosError } from "axios";
 import { convert2StandardPhoneNumber } from "../utils/phone.util";
 import { SendLoginAuthcodeDto } from "./dtos/SendLoginAuthcode.dto";
+import { BillingPlanService } from "../database/billingPlan/billingPlan.service";
+import { JwtService } from "@nestjs/jwt";
+import Environment from "../config/env";
 
 @Controller()
 export class AppController {
@@ -46,6 +48,12 @@ export class AppController {
 
   @Inject()
   private externalService: ExternalService;
+
+  @Inject()
+  private billingPlansService: BillingPlanService;
+
+  @Inject(JwtService)
+  private jwtService: JwtService;
 
   @Post("login")
   @ApiBearerAuth()
@@ -345,28 +353,23 @@ export class AppController {
     @Response() res: IResponse
   ) {
     const userId = (req as any).userId;
-    try {
-      this.logger.info(`User id: ${userId}`);
-      const user = await this.userService.getUser(userId);
-      this.logger.info(`User id returned from user table: ${user!.id}`);
-      if (!user) {
-        res.sendStatus(404);
-        return;
-      }
 
-      const { id, firstName, lastName, email, phoneNumber } = user;
+    const user = await this.userService.getUser(userId);
+    if (!user) return res.sendStatus(404);
 
-      res.status(200).send({
-        id,
-        firstName,
-        lastName,
-        phoneNumber,
-        email,
-      });
-    } catch (err) {
-      this.logger.error(err);
-      res.sendStatus(500);
-    }
+    return res.send({ ...user });
+  }
+
+  @Put("profile")
+  public async updateUser(
+    @Body() body: { billingPlanId: number; vehicleCount: number },
+    @Request() req: IRequest,
+    @Response() res: IResponse
+  ) {
+    const userId = (req as any).userId;
+    const { billingPlanId, vehicleCount } = body;
+    this.userService.updateUserById(userId, { billingPlanId, vehicleCount });
+    return res.sendStatus(204);
   }
 
   @Put("profile/password")
@@ -577,6 +580,58 @@ export class AppController {
     } catch (err) {
       this.logger.error(err);
       response.status(401).send("SMS code request error please try again");
+    }
+  }
+
+  @Get("billing-plans")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Send Register authcode" })
+  public async getBillingPlans(@Response() res: IResponse) {
+    const billingPlans = await this.billingPlansService.getBillingPlans();
+    return res.send(billingPlans);
+  }
+
+  @Post("request-user-token")
+  @ApiOperation({ summary: "Generates User JWT" })
+  public async requestUserToken(
+    @Body() body: { userId: string },
+    @Response() res: IResponse
+  ) {
+    const user = await this.userService.getUser(body.userId);
+
+    if (!user)
+      return res
+        .status(400)
+        .send(`No user exists with userId '${body.userId}'`);
+
+    const subscription_customer =
+      Environment.TRIAL_SUBSCRIPTION_CUSTOMERS.split(",").includes(
+        user.phoneNumber
+      );
+
+    const token = this.jwtService.sign({
+      sub: user.id,
+      userId: user.id,
+      subscription_customer,
+    });
+    return res.send({ token });
+  }
+
+  @Post("validate-user-token")
+  @ApiOperation({ summary: "Validates User JWT" })
+  public async validateUserToken(
+    @Body() body: { token: string },
+    @Response() res: IResponse
+  ) {
+    try {
+      const payload = this.jwtService.verify(body.token.split(" ")[1], {
+        ignoreExpiration: false,
+      });
+      if (!payload) return res.send({ isValid: false });
+
+      if (payload) return res.send({ isValid: true, ...payload });
+    } catch (err) {
+      return res.send({ isValid: false });
     }
   }
 
