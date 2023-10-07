@@ -50,19 +50,19 @@ export class AppController {
       const chargingEvents = await this.chargingEventService.getLatestChargingEvents(user.phoneNumber);
       if (!chargingEvents || chargingEvents.length <= 0)
         return res.status(404).send({ message: "No active charging session" });
-      
+
       const { data: chargingStatus } = await this.chargingIoTService.getChargingStatus({ eventId: chargingEvents[0].id, phoneNumber: user.phoneNumber, stationId: chargingEvents[0].stationId });
       if (chargingStatus.status === 1 && chargingStatus.sessionStatus === 'charging')
         return res.send(chargingEvents[0]);
-      else 
+      else
         return res.status(404).send({ message: "No active charging session" });
-      
+
     } catch (err) {
       this.logger.error(err);
       return res.status(500).send({ message: "Failed to fetch active charging session." });
     }
   }
-  
+
   @Post("start-charge")
   @ApiOperation({ summary: "Start Charging" })
   @ApiBearerAuth()
@@ -241,7 +241,10 @@ export class AppController {
       if (!chargingEvent) {
         throw Error("ChargingEvent not found");
       }
-      
+      const user = (
+        await this.externalService.umValidatePhone({ phoneNumber: chargingEvent.phoneNumber })
+      ).data;
+
       if (status.status != 0 && (status.chargeComplete != 0 || ["idle", "offline", "iot_error", "payment_error"].includes(status.sessionStatus))) {
         if (chargingEvent) {
           if (chargingEvent.sessionStatus && chargingEvent.sessionStatus !== 'in_progress') {
@@ -288,13 +291,18 @@ export class AppController {
                 status.promoted = true;
               }
               transactionLock[chargingEvent.id] = true;
-              const { data: paymentIntent} = await this.externalService.psCompleteCharge({
-                amount: actualCost,
-              }, request.headers.authorization as string);
-              chargingEvent.paymentIntentId = paymentIntent.id;
+              if (user.billingPlanId != 2) {   // <> not subscription
+                const { data: paymentIntent } = await this.externalService.psCompleteCharge({
+                  amount: actualCost,
+                }, request.headers.authorization as string);
+                chargingEvent.paymentIntentId = paymentIntent.id;
+              } else { // is transaction
+                if (chargingEvent.sessionStatus === "completed")
+                  chargingEvent.sessionStatus = "completed_sub";
+              }
               await this.chargingEventService.saveChargingEvent(chargingEvent);
             }
-          } catch(err) {
+          } catch (err) {
             this.logger.error(err, "Payment Error");
             status.error = 'Payment failed';
             chargingEvent.sessionStatus = status.sessionStatus = 'payment_error';
@@ -336,9 +344,9 @@ export class AppController {
         body.eventId
       );
       if (chargingEvent) {
-          await this.externalService.umValidatePhone({
-            phoneNumber: chargingEvent.phoneNumber,
-          });
+        const user = (
+          await this.externalService.umValidatePhone({ phoneNumber: chargingEvent.phoneNumber })
+        ).data;
         let { data: result } = await this.chargingIoTService.manageCharging(
           body
         );
@@ -372,13 +380,17 @@ export class AppController {
                 result.promoted = true;
               }
               transactionLock[chargingEvent.id] = true;
-              const { data: paymentIntent } = await this.externalService.psCompleteCharge({
-                amount: actualCost,
-              }, request.headers.authorization as string);
-              chargingEvent.paymentIntentId = paymentIntent.id;
+              if (user.billingPlanId != 2) {    // <> not subscription
+                const { data: paymentIntent } = await this.externalService.psCompleteCharge({
+                  amount: actualCost,
+                }, request.headers.authorization as string);
+                chargingEvent.paymentIntentId = paymentIntent.id;
+                chargingEvent.sessionStatus = "stopped";
+              } else {    // is transaction
+                chargingEvent.sessionStatus = "stopped_sub";
+              }
             }
-            chargingEvent.sessionStatus = "stopped";
-          } catch(err) {
+          } catch (err) {
             this.logger.error(err);
             transactionLock[chargingEvent.id] = false;
             chargingEvent.sessionStatus = 'payment_error';
@@ -418,7 +430,7 @@ export class AppController {
       const { phoneNumber } = data;
       const transactions = await this.chargingEventService.getTransactions(phoneNumber);
       response.send(transactions);
-    } catch(err) {
+    } catch (err) {
       response.sendStatus(401);
     }
   }

@@ -46,20 +46,25 @@ export class CronService {
             phoneNumber: event.phoneNumber,
             stationId: event.stationId
           });
-          const { data: paymentIntent } = await this.externalService.psCompleteCharge({
-            amount: totalCost,
-          }, `Bearer ${auth.token}`);
-          if (paymentIntent.id) {
-            if (originalSessionStatus === 'in_progress')
-              event.sessionStatus = 'ex_in_progress';
-            event.exceptionStatus = 'completed';
-            event.paymentIntentId = paymentIntent.id;
-            event.chargeStatusPercentage = status.chargeStatusPercentage;
-            event.chargeDeliveredKwh = status.chargeDeliveredKwh;
-            event.chargeSpeedKwh = status.chargeSpeedKwh;
-            event.chargeVehicleRequestedKwh = status.chargeVehicleRequestedKwh;
-            event.rateActivekWh = status.rateActivekWh;
-            event.totalChargeTime = status.sessionTotalDuration;
+          if (user.billingPlanId != 2) { // <> not subscription
+            const { data: paymentIntent } = await this.externalService.psCompleteCharge({
+              amount: totalCost,
+            }, `Bearer ${auth.token}`);
+            if (paymentIntent.id) {
+              if (originalSessionStatus === 'in_progress')
+                event.sessionStatus = 'ex_in_progress';
+              event.exceptionStatus = 'completed';
+              event.paymentIntentId = paymentIntent.id;
+              event.chargeStatusPercentage = status.chargeStatusPercentage;
+              event.chargeDeliveredKwh = status.chargeDeliveredKwh;
+              event.chargeSpeedKwh = status.chargeSpeedKwh;
+              event.chargeVehicleRequestedKwh = status.chargeVehicleRequestedKwh;
+              event.rateActivekWh = status.rateActivekWh;
+              event.totalChargeTime = status.sessionTotalDuration;
+              await this.chargingEventService.saveChargingEvent(event);
+            }
+          } else {  // is transaction
+            event.sessionStatus = 'completed_sub';
             await this.chargingEventService.saveChargingEvent(event);
           }
         } catch (err) {

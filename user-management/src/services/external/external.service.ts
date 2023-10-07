@@ -9,6 +9,7 @@ import { ValidateSMSAuthCodeDto } from "./dtos/ValidateSMSAuthCode.dto";
 import { SendPasswordResetLink } from "./dtos/SendPasswordResetLink.dto";
 import { RequestUserTokenDto } from "./dtos/RequestUserToken";
 import { RequestUserTokenBodyDto } from "./dtos/RequestUserTokenBody";
+import { CompleteChargeDto } from "./dtos/CompleteCharge.dto";
 
 @Injectable()
 export class ExternalService {
@@ -68,5 +69,13 @@ export class ExternalService {
       body
     );
     return data;
+  }
+
+  public async psCompleteCharge(body: CompleteChargeDto, authorization: string) {
+    return axios.post(
+      `${Environment.SERVICE_PAYMENT_URL}/complete-charge`,
+      body,
+      { headers: { Authorization: authorization } }
+    );
   }
 }
