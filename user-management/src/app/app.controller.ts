@@ -648,11 +648,18 @@ export class AppController {
     if (!(req as any).subscription_customer)
       return res.status(403).send("You do not have subscription plan access.");
 
+    const dayOfMonth = new Date().getDate();
+    const daysInMonth = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth()
+    ).getDate();
+    const proRate = dayOfMonth / daysInMonth;
+
     this.subscriptionChargeService
       .save({
         userId,
         chargeStatus: "pending",
-        amount: Environment.SUBSCRIPTION_MONTHLY_FEE,
+        amount: Environment.SUBSCRIPTION_MONTHLY_FEE * proRate,
         description: "signup",
       })
       .then(() => res.sendStatus(204));
