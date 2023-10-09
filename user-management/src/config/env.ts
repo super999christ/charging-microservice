@@ -17,6 +17,7 @@ const Environment = {
   TRIAL_SUBSCRIPTION_CUSTOMERS: String(
     process.env["TRIAL_SUBSCRIPTION_CUSTOMERS"]
   ),
+  SUBSCRIPTION_MONTHLY_FEE: Number(process.env["SUBSCRIPTION_MONTHLY_FEE"]),
   HASH_SALT: Number(process.env["HASH_SALT"]),
 };
 

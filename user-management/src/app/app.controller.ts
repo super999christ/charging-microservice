@@ -644,11 +644,17 @@ export class AppController {
     @Request() req: IRequest,
     @Response() res: IResponse
   ) {
+    const userId = (req as any).userId;
     if (!(req as any).subscription_customer)
       return res.status(403).send("You do not have subscription plan access.");
 
     this.subscriptionChargeService
-      .save({ chargeStatus: "pending" })
+      .save({
+        userId,
+        chargeStatus: "pending",
+        amount: Environment.SUBSCRIPTION_MONTHLY_FEE,
+        description: "signup",
+      })
       .then(() => res.sendStatus(204));
   }
 
