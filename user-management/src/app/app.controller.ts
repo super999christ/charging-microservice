@@ -635,6 +635,12 @@ export class AppController {
     }
   }
 
+  @Post("subscriptions")
+  public async createSubscription(@Request() req: IRequest) {
+    // check is user has claim to subscribe
+    // create subscription with signup and pending status
+  }
+
   @Get("healthz")
   public async healthz(@Response() res: IResponse) {
     return res.sendStatus(200);
