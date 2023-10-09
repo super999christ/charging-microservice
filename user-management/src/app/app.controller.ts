@@ -31,6 +31,7 @@ import { SendLoginAuthcodeDto } from "./dtos/SendLoginAuthcode.dto";
 import { BillingPlanService } from "../database/billingPlan/billingPlan.service";
 import { JwtService } from "@nestjs/jwt";
 import Environment from "../config/env";
+import { SubscriptionChargeService } from "../database/subscriptionCharge/subscriptionCharge.service";
 
 @Controller()
 export class AppController {
@@ -53,6 +54,8 @@ export class AppController {
   private billingPlansService: BillingPlanService;
 
   @Inject()
+  private subscriptionChargeService: SubscriptionChargeService;
+
   @Inject(JwtService)
   private jwtService: JwtService;
 
@@ -644,8 +647,9 @@ export class AppController {
     if (!(req as any).subscription_customer)
       return res.status(403).send("You do not have subscription plan access.");
 
-    // create subscription with signup and pending status
-    this.su;
+    this.subscriptionChargeService
+      .save({ chargeStatus: "pending" })
+      .then(() => res.sendStatus(204));
   }
 
   @Get("healthz")

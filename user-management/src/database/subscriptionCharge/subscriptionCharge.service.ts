@@ -8,9 +8,7 @@ export class SubscriptionChargeService {
   @InjectRepository(SubscriptionCharge)
   private repository: Repository<SubscriptionCharge>;
 
-  public async saveRegistration(
-    subscriptionCharge: DeepPartial<SubscriptionCharge>
-  ) {
+  public async save(subscriptionCharge: DeepPartial<SubscriptionCharge>) {
     return this.repository.save(subscriptionCharge);
   }
 }
