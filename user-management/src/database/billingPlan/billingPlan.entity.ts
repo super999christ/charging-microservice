@@ -9,7 +9,7 @@ import {
 @Entity("tbl_Billing_Plans")
 export class BillingPlan {
   @PrimaryGeneratedColumn("increment", { name: "BillingPlanId" })
-  id: string;
+  id: number;
 
   @Column({ name: "BillingPlan", type: "varchar", nullable: false })
   billingPlan: string;

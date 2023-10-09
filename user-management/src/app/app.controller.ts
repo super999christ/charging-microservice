@@ -641,7 +641,7 @@ export class AppController {
 
   @Put("subscriptions")
   public async createSubscription(
-    @Body() body: { vehicleCount: number },
+    @Body() { vehicleCount }: { vehicleCount: number },
     @Request() req: IRequest,
     @Response() res: IResponse
   ) {
@@ -652,7 +652,15 @@ export class AppController {
     const user = await this.userService.getUser(userId);
     if (!user) return res.status(400).send("User does not exist");
 
+    const billingPlans = await this.billingPlansService.getBillingPlans();
+
     const isUserSubscribed = user.billingPlan.billingPlan === "subscription";
+
+    this.userService.saveUser({
+      vehicleCount,
+      billingPlanId: billingPlans.find((p) => p.billingPlan === "subscription")!
+        .id,
+    });
 
     const dayOfMonth = new Date().getDate();
     const daysInMonth = new Date(
