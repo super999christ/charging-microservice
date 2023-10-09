@@ -639,14 +639,20 @@ export class AppController {
     }
   }
 
-  @Post("subscriptions")
+  @Put("subscriptions")
   public async createSubscription(
+    @Body() body: { vehicleCount: number },
     @Request() req: IRequest,
     @Response() res: IResponse
   ) {
     const userId = (req as any).userId;
     if (!(req as any).subscription_customer)
       return res.status(403).send("You do not have subscription plan access.");
+
+    const user = await this.userService.getUser(userId);
+    if (!user) return res.status(400).send("User does not exist");
+
+    const isUserSubscribed = user.billingPlan.billingPlan === "subscription";
 
     const dayOfMonth = new Date().getDate();
     const daysInMonth = new Date(
@@ -659,8 +665,10 @@ export class AppController {
       .save({
         userId,
         chargeStatus: "pending",
-        amount: Environment.SUBSCRIPTION_MONTHLY_FEE * proRate,
-        description: "signup",
+        amount:
+          Environment.SUBSCRIPTION_MONTHLY_FEE *
+          (isUserSubscribed ? 1 : proRate),
+        description: isUserSubscribed ? "vehicle-count" : "signup",
       })
       .then(() => res.sendStatus(204));
   }
