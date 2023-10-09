@@ -41,14 +41,14 @@ export class User {
   @Column({ name: "ChargingNotify", type: "bool", default: false })
   chargingNotify: boolean;
 
-  @Column({ name: "BillingPlanId", type: "bigint", default: 1 })
+  @Column({ name: "BillingPlanId", type: "bigint", default: 1, nullable: true })
   billingPlanId: number;
 
   @OneToOne((type) => BillingPlan, { eager: true })
   @JoinColumn({ name: "BillingPlanId" })
   billingPlan: BillingPlan;
 
-  @Column({ name: "VehicleCount", type: "bigint", default: 1 })
+  @Column({ name: "VehicleCount", type: "bigint", default: 1, nullable: true })
   vehicleCount: number;
 
   @CreateDateColumn({ type: "timestamptz", name: "CreatedDate" })
