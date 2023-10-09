@@ -10,7 +10,7 @@ import { ExternalModule } from "../services/external/external.module";
 import { AppController } from "./app.controller";
 import { AuthMiddleware } from "../middlewares/auth.middleware";
 import { BillingPlanModule } from "../database/billingPlan/billingPlan.module";
-import { SubscriptionChargesModule } from "../database/subscriptionCharges/subscriptionCharges.module";
+import { SubscriptionChargeModule } from "../database/subscriptionCharge/subscriptionCharge.module";
 import { JwtModule } from "@nestjs/jwt";
 import Environment from "../config/env";
 
@@ -31,7 +31,7 @@ import Environment from "../config/env";
     PasswordResetModule,
     ExternalModule,
     BillingPlanModule,
-    SubscriptionChargesModule,
+    SubscriptionChargeModule,
   ],
 })
 export class AppModule {

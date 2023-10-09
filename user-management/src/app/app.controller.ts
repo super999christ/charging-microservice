@@ -52,6 +52,7 @@ export class AppController {
   @Inject()
   private billingPlansService: BillingPlanService;
 
+  @Inject()
   @Inject(JwtService)
   private jwtService: JwtService;
 
@@ -636,9 +637,15 @@ export class AppController {
   }
 
   @Post("subscriptions")
-  public async createSubscription(@Request() req: IRequest) {
-    // check is user has claim to subscribe
+  public async createSubscription(
+    @Request() req: IRequest,
+    @Response() res: IResponse
+  ) {
+    if (!(req as any).subscription_customer)
+      return res.status(403).send("You do not have subscription plan access.");
+
     // create subscription with signup and pending status
+    this.su;
   }
 
   @Get("healthz")

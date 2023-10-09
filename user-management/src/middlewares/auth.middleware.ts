@@ -11,9 +11,10 @@ export class AuthMiddleware implements NestMiddleware {
         token: request.headers.authorization,
       })
       .then((res) => {
-        const { isValid, userId } = res.data;
+        const { isValid, userId, subscription_customer } = res.data;
         if (isValid) {
           (request as any).userId = userId;
+          (request as any).subscription_customer = subscription_customer;
           next();
         } else {
           response.sendStatus(401);
