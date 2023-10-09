@@ -11,5 +11,4 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   entities: ["dist/**/*.entity.js"],
   migrations: ["migrations/*.js"],
   migrationsTableName: "tbl_Migration_History_User_Management",
-  migrationsRun: true,
 };
