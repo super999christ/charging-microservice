@@ -364,18 +364,6 @@ export class AppController {
     return res.send({ ...user });
   }
 
-  @Put("profile")
-  public async updateUser(
-    @Body() body: { billingPlanId: number; vehicleCount: number },
-    @Request() req: IRequest,
-    @Response() res: IResponse
-  ) {
-    const userId = (req as any).userId;
-    const { billingPlanId, vehicleCount } = body;
-    this.userService.updateUserById(userId, { billingPlanId, vehicleCount });
-    return res.sendStatus(204);
-  }
-
   @Put("profile/password")
   @ApiOperation({ summary: "Update Password" })
   @ApiBearerAuth()
