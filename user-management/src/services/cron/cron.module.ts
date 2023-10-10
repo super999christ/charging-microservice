@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { CronService } from "./cron.service";
 import { ScheduleModule } from "@nestjs/schedule";
 import { ExternalModule } from "../external/external.module";
-import { SubscriptionChargesModule } from "../../database/subscriptionCharges/subscriptionCharges.module";
+import { SubscriptionChargeModule } from "../../database/subscriptionCharge/subscriptionCharge.module";
 import { UserModule } from "../../database/user/user.module";
 
 @Module({
@@ -10,11 +10,9 @@ import { UserModule } from "../../database/user/user.module";
   exports: [CronService],
   imports: [
     ScheduleModule.forRoot(),
-    SubscriptionChargesModule,
+    SubscriptionChargeModule,
     UserModule,
     ExternalModule,
-  ]
+  ],
 })
-export class CronModule {
-
-};
+export class CronModule {}
