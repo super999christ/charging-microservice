@@ -15,31 +15,27 @@ export class CronService {
   private subscriptionChargesService: SubscriptionChargesService;
 
   @Cron("0 0-23/2 * * *")
-  public async runMonthlyBillingRecords() {
+  public async runSubscriptionProcessing() {
     const today = new Date();
     if (today.getDate() !== 1 || today.getHours() < 12)
       return;
     const users = await this.userService.getSubscriptionUsers();
-    console.log("@Cron: ", users);
     for (const user of users) {
       try {
-        const charges = await this.subscriptionChargesService.findSubscriptionChargesAround(today);
+        const charges = await this.subscriptionChargesService.findSubscriptionChargesAround(user.id, today);
         if (charges.length)
           continue;
         await this.subscriptionChargesService.saveSubscriptionCharges({
           userId: user.id,
           description: 'monthly_fee',
           chargeStatus: 'pending',
-          amount: Environment.SUBSCRIPTION_MONTHLY_FEE * user.vehicleCount
+          amount: Environment.SUBSCRIPTION_MONTHLY_FEE/* * user.vehicleCount*/
         });
       } catch (err) {
         console.error("@Error: ", err);
       }
     }
-  }
-
-  @Cron("0 0-23/2 * * *")
-  public async runSubscriptionProcessing() {
+    
     const charges = await this.subscriptionChargesService.findPendingSubscriptionCharges();
     for (const charge of charges) {
       try {

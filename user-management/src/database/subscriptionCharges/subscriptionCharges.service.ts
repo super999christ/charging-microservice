@@ -12,13 +12,14 @@ export class SubscriptionChargesService {
     return await this.repository.save(subscriptionCharges);
   }
 
-  public async findSubscriptionChargesAround(date: Date) {
+  public async findSubscriptionChargesAround(userId: string, date: Date) {
     const startDate = new Date(date.getTime() - 3600 * 24 * 1000);
     const endDate = new Date(date.getTime() + 3600 * 24 * 1000);
     return await this.repository.find({
       where: {
         createdDate: Between(startDate, endDate),
-        chargeStatus: 'pending'
+        chargeStatus: 'pending',
+        userId
       }
     });
   }
