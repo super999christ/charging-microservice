@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import Environment from "../../config/env";
 import { ExternalService } from "../external/external.service";
-import { SubscriptionChargesService } from "../../database/subscriptionCharges/subscriptionCharges.service";
+import { SubscriptionChargeService } from "../../database/subscriptionCharge/subscriptionCharge.service";
 import { UserService } from "../../database/user/user.service";
 import { Cron } from "@nestjs/schedule";
 
@@ -12,41 +12,48 @@ export class CronService {
   @Inject()
   private userService: UserService;
   @Inject()
-  private subscriptionChargesService: SubscriptionChargesService;
+  private subscriptionChargesService: SubscriptionChargeService;
 
   @Cron("0 0-23/2 * * *")
   public async runSubscriptionProcessing() {
     const today = new Date();
-    if (today.getDate() !== 1 || today.getHours() < 12)
-      return;
+    if (today.getDate() !== 1 || today.getHours() < 12) return;
     const users = await this.userService.getSubscriptionUsers();
     for (const user of users) {
       try {
-        const charges = await this.subscriptionChargesService.findSubscriptionChargesAround(user.id, today);
-        if (charges.length)
-          continue;
+        const charges =
+          await this.subscriptionChargesService.findSubscriptionChargesAround(
+            user.id,
+            today
+          );
+        if (charges.length) continue;
         await this.subscriptionChargesService.saveSubscriptionCharges({
           userId: user.id,
-          description: 'monthly_fee',
-          chargeStatus: 'pending',
-          amount: Environment.SUBSCRIPTION_MONTHLY_FEE/* * user.vehicleCount*/
+          description: "monthly_fee",
+          chargeStatus: "pending",
+          amount: Environment.SUBSCRIPTION_MONTHLY_FEE /* * user.vehicleCount*/,
         });
       } catch (err) {
         console.error("@Error: ", err);
       }
     }
-    
-    const charges = await this.subscriptionChargesService.findPendingSubscriptionCharges();
+
+    const charges =
+      await this.subscriptionChargesService.findPendingSubscriptionCharges();
     for (const charge of charges) {
       try {
         const { data: auth } = await this.externalService.asRequestUserToken({
           userId: charge.userId,
         });
-        const { data: paymentIntent } = await this.externalService.psCompleteCharge({
-          amount: charge.amount
-        }, `Bearer ${auth.token}`);
+        const { data: paymentIntent } =
+          await this.externalService.psCompleteCharge(
+            {
+              amount: charge.amount,
+            },
+            `Bearer ${auth.token}`
+          );
         if (paymentIntent.id) {
-          charge.chargeStatus = 'completed';
+          charge.chargeStatus = "completed";
           charge.paymentIntentId = paymentIntent.id;
           await this.subscriptionChargesService.saveSubscriptionCharges(charge);
         }
