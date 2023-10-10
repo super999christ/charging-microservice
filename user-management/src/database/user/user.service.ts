@@ -63,4 +63,9 @@ export class UserService {
     const user = await this.userRepository.update({ id: userId }, userInfo);
     return user;
   }
+
+  public async getSubscriptionUsers() {
+    const users = await this.userRepository.find({ where: { billingPlanId: 2, active: true } });
+    return users;
+  }
 }

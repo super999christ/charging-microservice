@@ -19,6 +19,7 @@ const Environment = {
   ),
   SUBSCRIPTION_MONTHLY_FEE: Number(process.env["SUBSCRIPTION_MONTHLY_FEE"]),
   HASH_SALT: Number(process.env["HASH_SALT"]),
+  SUBSCRIPTION_MONTHLY_FEE: Number(process.env["SUBSCRIPTION_MONTHLY_FEE"])
 };
 
 export default Environment;
