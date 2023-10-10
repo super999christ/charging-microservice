@@ -6,16 +6,19 @@ import Environment from "../config/env";
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
   use(request: Request, response: Response, next: NextFunction) {
-    axios.post(`${Environment.SERVICE_API_AUTH_URL}/validate-user-token`, {
-      token: request.headers.authorization
-    }).then(res => {
-      const { isValid, userId } = res.data;
-      if (isValid) {
-        (request as any).userId = userId;
-        next();
-      } else {
-        response.sendStatus(401);
-      }
-    });
+    axios
+      .post(`${Environment.SERVICE_API_AUTH_URL}/validate-user-token`, {
+        token: request.headers.authorization,
+      })
+      .then((res) => {
+        const { isValid, userId, subscription_customer } = res.data;
+        if (isValid) {
+          (request as any).userId = userId;
+          (request as any).subscription_customer = subscription_customer;
+          next();
+        } else {
+          response.sendStatus(401);
+        }
+      });
   }
 }

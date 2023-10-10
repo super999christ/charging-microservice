@@ -9,6 +9,10 @@ import { PasswordResetModule } from "../database/password-reset/password-reset.m
 import { ExternalModule } from "../services/external/external.module";
 import { AppController } from "./app.controller";
 import { AuthMiddleware } from "../middlewares/auth.middleware";
+import { BillingPlanModule } from "../database/billingPlan/billingPlan.module";
+import { SubscriptionChargeModule } from "../database/subscriptionCharge/subscriptionCharge.module";
+import { JwtModule } from "@nestjs/jwt";
+import Environment from "../config/env";
 
 @Module({
   controllers: [AppController],
@@ -18,10 +22,16 @@ import { AuthMiddleware } from "../middlewares/auth.middleware";
     LoggerModule.forRoot({
       exclude: [{ method: RequestMethod.ALL, path: "healthz" }],
     }),
+    JwtModule.register({
+      secret: Environment.TOKEN_SECRET_KEY,
+      signOptions: { expiresIn: "1h" },
+    }),
     UserModule,
     UserRegistrationModule,
     PasswordResetModule,
     ExternalModule,
+    BillingPlanModule,
+    SubscriptionChargeModule,
   ],
 })
 export class AppModule {
@@ -29,8 +39,8 @@ export class AppModule {
     consumer
       .apply(AuthMiddleware)
       .forRoutes(
-        { path: "/profile", method: RequestMethod.GET },
-        { path: "/profile/password", method: RequestMethod.PUT }
+        { path: "/profile", method: RequestMethod.ALL },
+        { path: "/profile/password", method: RequestMethod.ALL }
       );
   }
 }

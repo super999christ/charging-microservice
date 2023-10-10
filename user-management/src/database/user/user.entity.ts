@@ -4,7 +4,10 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  OneToOne,
+  JoinColumn,
 } from "typeorm";
+import { BillingPlan } from "../billingPlan/billingPlan.entity";
 
 @Entity("tbl_Users")
 export class User {
@@ -38,9 +41,19 @@ export class User {
   @Column({ name: "ChargingNotify", type: "bool", default: false })
   chargingNotify: boolean;
 
-  @CreateDateColumn({ type: 'timestamptz', name: "CreatedDate" })
+  @Column({ name: "BillingPlanId", type: "bigint", default: 1 })
+  billingPlanId: number;
+
+  @OneToOne((type) => BillingPlan, { eager: true })
+  @JoinColumn({ name: "BillingPlanId" })
+  billingPlan: BillingPlan;
+
+  @Column({ name: "VehicleCount", type: "bigint", default: 1 })
+  vehicleCount: number;
+
+  @CreateDateColumn({ type: "timestamptz", name: "CreatedDate" })
   createdDate: Date;
 
-  @UpdateDateColumn({ type: 'timestamptz', name: "UpdatedDate" })
+  @UpdateDateColumn({ type: "timestamptz", name: "UpdatedDate" })
   updatedDate: Date;
 }

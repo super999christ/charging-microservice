@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Inject,
-  Logger,
   Post,
   Put,
   Query,
@@ -29,6 +28,10 @@ import { UpdatePasswordDto } from "./dtos/UpdatePassword.dto";
 import { AxiosError } from "axios";
 import { convert2StandardPhoneNumber } from "../utils/phone.util";
 import { SendLoginAuthcodeDto } from "./dtos/SendLoginAuthcode.dto";
+import { BillingPlanService } from "../database/billingPlan/billingPlan.service";
+import { JwtService } from "@nestjs/jwt";
+import Environment from "../config/env";
+import { SubscriptionChargeService } from "../database/subscriptionCharge/subscriptionCharge.service";
 
 @Controller()
 export class AppController {
@@ -46,6 +49,15 @@ export class AppController {
 
   @Inject()
   private externalService: ExternalService;
+
+  @Inject()
+  private billingPlansService: BillingPlanService;
+
+  @Inject()
+  private subscriptionChargeService: SubscriptionChargeService;
+
+  @Inject(JwtService)
+  private jwtService: JwtService;
 
   @Post("login")
   @ApiBearerAuth()
@@ -345,28 +357,11 @@ export class AppController {
     @Response() res: IResponse
   ) {
     const userId = (req as any).userId;
-    try {
-      this.logger.info(`User id: ${userId}`);
-      const user = await this.userService.getUser(userId);
-      this.logger.info(`User id returned from user table: ${user!.id}`);
-      if (!user) {
-        res.sendStatus(404);
-        return;
-      }
 
-      const { id, firstName, lastName, email, phoneNumber } = user;
+    const user = await this.userService.getUser(userId);
+    if (!user) return res.sendStatus(404);
 
-      res.status(200).send({
-        id,
-        firstName,
-        lastName,
-        phoneNumber,
-        email,
-      });
-    } catch (err) {
-      this.logger.error(err);
-      res.sendStatus(500);
-    }
+    return res.send({ ...user });
   }
 
   @Put("profile/password")
@@ -578,6 +573,100 @@ export class AppController {
       this.logger.error(err);
       response.status(401).send("SMS code request error please try again");
     }
+  }
+
+  @Get("billing-plans")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Send Register authcode" })
+  public async getBillingPlans(@Response() res: IResponse) {
+    const billingPlans = await this.billingPlansService.getBillingPlans();
+    return res.send(billingPlans);
+  }
+
+  @Post("request-user-token")
+  @ApiOperation({ summary: "Generates User JWT" })
+  public async requestUserToken(
+    @Body() body: { userId: string },
+    @Response() res: IResponse
+  ) {
+    const user = await this.userService.getUser(body.userId);
+
+    if (!user)
+      return res
+        .status(400)
+        .send(`No user exists with userId '${body.userId}'`);
+
+    const subscription_customer =
+      Environment.TRIAL_SUBSCRIPTION_CUSTOMERS.split(",").includes(
+        user.phoneNumber
+      );
+
+    const token = this.jwtService.sign({
+      sub: user.id,
+      userId: user.id,
+      subscription_customer,
+    });
+    return res.send({ token });
+  }
+
+  @Post("validate-user-token")
+  @ApiOperation({ summary: "Validates User JWT" })
+  public async validateUserToken(
+    @Body() body: { token: string },
+    @Response() res: IResponse
+  ) {
+    try {
+      const payload = this.jwtService.verify(body.token.split(" ")[1], {
+        ignoreExpiration: false,
+      });
+      if (!payload) return res.send({ isValid: false });
+
+      if (payload) return res.send({ isValid: true, ...payload });
+    } catch (err) {
+      return res.send({ isValid: false });
+    }
+  }
+
+  @Put("subscriptions")
+  public async createSubscription(
+    @Body() { vehicleCount }: { vehicleCount: number },
+    @Request() req: IRequest,
+    @Response() res: IResponse
+  ) {
+    const userId = (req as any).userId;
+    if (!(req as any).subscription_customer)
+      return res.status(403).send("You do not have subscription plan access.");
+
+    const user = await this.userService.getUser(userId);
+    if (!user) return res.status(400).send("User does not exist");
+
+    const billingPlans = await this.billingPlansService.getBillingPlans();
+
+    const isUserSubscribed = user.billingPlan.billingPlan === "subscription";
+
+    this.userService.saveUser({
+      vehicleCount,
+      billingPlanId: billingPlans.find((p) => p.billingPlan === "subscription")!
+        .id,
+    });
+
+    const dayOfMonth = new Date().getDate();
+    const daysInMonth = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth()
+    ).getDate();
+    const proRate = dayOfMonth / daysInMonth;
+
+    this.subscriptionChargeService
+      .save({
+        userId,
+        chargeStatus: "pending",
+        amount:
+          Environment.SUBSCRIPTION_MONTHLY_FEE *
+          (isUserSubscribed ? 1 : proRate),
+        description: isUserSubscribed ? "vehicle-count" : "signup",
+      })
+      .then(() => res.sendStatus(204));
   }
 
   @Get("healthz")
