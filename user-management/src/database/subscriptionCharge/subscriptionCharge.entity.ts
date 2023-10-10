@@ -7,7 +7,7 @@ import {
 } from "typeorm";
 
 @Entity("tbl_Subscription_Charges")
-export class SubscriptionCharges {
+export class SubscriptionCharge {
   @PrimaryColumn("uuid", { name: "UserId" })
   userId: string;
 

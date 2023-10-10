@@ -31,6 +31,7 @@ import { SendLoginAuthcodeDto } from "./dtos/SendLoginAuthcode.dto";
 import { BillingPlanService } from "../database/billingPlan/billingPlan.service";
 import { JwtService } from "@nestjs/jwt";
 import Environment from "../config/env";
+import { SubscriptionChargeService } from "../database/subscriptionCharge/subscriptionCharge.service";
 
 @Controller()
 export class AppController {
@@ -51,6 +52,9 @@ export class AppController {
 
   @Inject()
   private billingPlansService: BillingPlanService;
+
+  @Inject()
+  private subscriptionChargeService: SubscriptionChargeService;
 
   @Inject(JwtService)
   private jwtService: JwtService;
@@ -360,18 +364,6 @@ export class AppController {
     return res.send({ ...user });
   }
 
-  @Put("profile")
-  public async updateUser(
-    @Body() body: { billingPlanId: number; vehicleCount: number },
-    @Request() req: IRequest,
-    @Response() res: IResponse
-  ) {
-    const userId = (req as any).userId;
-    const { billingPlanId, vehicleCount } = body;
-    this.userService.updateUserById(userId, { billingPlanId, vehicleCount });
-    return res.sendStatus(204);
-  }
-
   @Put("profile/password")
   @ApiOperation({ summary: "Update Password" })
   @ApiBearerAuth()
@@ -633,6 +625,48 @@ export class AppController {
     } catch (err) {
       return res.send({ isValid: false });
     }
+  }
+
+  @Put("subscriptions")
+  public async createSubscription(
+    @Body() { vehicleCount }: { vehicleCount: number },
+    @Request() req: IRequest,
+    @Response() res: IResponse
+  ) {
+    const userId = (req as any).userId;
+    if (!(req as any).subscription_customer)
+      return res.status(403).send("You do not have subscription plan access.");
+
+    const user = await this.userService.getUser(userId);
+    if (!user) return res.status(400).send("User does not exist");
+
+    const billingPlans = await this.billingPlansService.getBillingPlans();
+
+    const isUserSubscribed = user.billingPlan.billingPlan === "subscription";
+
+    this.userService.saveUser({
+      vehicleCount,
+      billingPlanId: billingPlans.find((p) => p.billingPlan === "subscription")!
+        .id,
+    });
+
+    const dayOfMonth = new Date().getDate();
+    const daysInMonth = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth()
+    ).getDate();
+    const proRate = dayOfMonth / daysInMonth;
+
+    this.subscriptionChargeService
+      .save({
+        userId,
+        chargeStatus: "pending",
+        amount:
+          Environment.SUBSCRIPTION_MONTHLY_FEE *
+          (isUserSubscribed ? 1 : proRate),
+        description: isUserSubscribed ? "vehicle-count" : "signup",
+      })
+      .then(() => res.sendStatus(204));
   }
 
   @Get("healthz")

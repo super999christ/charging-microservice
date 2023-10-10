@@ -1,14 +1,20 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Between, DeepPartial, Repository } from "typeorm";
-import { SubscriptionCharges } from "./subscriptionCharges.entity";
+import { DeepPartial, Repository, Between } from "typeorm";
+import { SubscriptionCharge } from "./subscriptionCharge.entity";
 
 @Injectable()
-export class SubscriptionChargesService {
-  @InjectRepository(SubscriptionCharges)
-  private repository: Repository<SubscriptionCharges>;
+export class SubscriptionChargeService {
+  @InjectRepository(SubscriptionCharge)
+  private repository: Repository<SubscriptionCharge>;
 
-  public async saveSubscriptionCharges(subscriptionCharges: DeepPartial<SubscriptionCharges>) {
+  public async save(subscriptionCharge: DeepPartial<SubscriptionCharge>) {
+    return this.repository.save(subscriptionCharge);
+  }
+
+  public async saveSubscriptionCharges(
+    subscriptionCharges: DeepPartial<SubscriptionCharge>
+  ) {
     return await this.repository.save(subscriptionCharges);
   }
 
@@ -18,17 +24,17 @@ export class SubscriptionChargesService {
     return await this.repository.find({
       where: {
         createdDate: Between(startDate, endDate),
-        chargeStatus: 'pending',
-        userId
-      }
+        chargeStatus: "pending",
+        userId,
+      },
     });
   }
 
   public async findPendingSubscriptionCharges() {
     return await this.repository.find({
       where: {
-        chargeStatus: 'pending'
-      }
+        chargeStatus: "pending",
+      },
     });
   }
 }
