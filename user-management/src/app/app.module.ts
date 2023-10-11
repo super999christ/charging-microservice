@@ -40,7 +40,8 @@ export class AppModule {
       .apply(AuthMiddleware)
       .forRoutes(
         { path: "/profile", method: RequestMethod.ALL },
-        { path: "/profile/password", method: RequestMethod.ALL }
+        { path: "/profile/password", method: RequestMethod.ALL },
+        { path: "/subscriptions", method: RequestMethod.ALL }
       );
   }
 }
