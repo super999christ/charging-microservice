@@ -11,8 +11,7 @@ import { AppController } from "./app.controller";
 import { AuthMiddleware } from "../middlewares/auth.middleware";
 import { BillingPlanModule } from "../database/billingPlan/billingPlan.module";
 import { SubscriptionChargeModule } from "../database/subscriptionCharge/subscriptionCharge.module";
-import { JwtModule } from "@nestjs/jwt";
-import Environment from "../config/env";
+import { JwtModule } from "../services/jwt/jwt.module";
 
 @Module({
   controllers: [AppController],
@@ -22,16 +21,13 @@ import Environment from "../config/env";
     LoggerModule.forRoot({
       exclude: [{ method: RequestMethod.ALL, path: "healthz" }],
     }),
-    JwtModule.register({
-      secret: Environment.TOKEN_SECRET_KEY,
-      signOptions: { expiresIn: "1h" },
-    }),
     UserModule,
     UserRegistrationModule,
     PasswordResetModule,
     ExternalModule,
     BillingPlanModule,
     SubscriptionChargeModule,
+    JwtModule,
   ],
 })
 export class AppModule {

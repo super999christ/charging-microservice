@@ -2,13 +2,19 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  PrimaryColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
 
 @Entity("tbl_Subscription_Charges")
 export class SubscriptionCharge {
-  @PrimaryColumn("uuid", { name: "UserId" })
+  @PrimaryGeneratedColumn("increment", {
+    name: "SubscriptionChargeId",
+    type: "bigint",
+  })
+  id: number;
+
+  @Column({ name: "UserId", type: "uuid" })
   userId: string;
 
   @Column({ name: "Amount", type: "float", nullable: false })
