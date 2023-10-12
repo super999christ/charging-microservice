@@ -670,14 +670,16 @@ export class AppController {
     ).getDate();
     const proRate = dayOfMonth / daysInMonth;
 
+    if (isUserSubscribed) return res.sendStatus(204);
+
     this.subscriptionChargeService
       .save({
         userId,
         chargeStatus: "pending",
-        amount:
-          Environment.SUBSCRIPTION_MONTHLY_FEE *
-          (isUserSubscribed ? 1 : proRate),
-        description: isUserSubscribed ? "vehicle-count" : "signup",
+        amount: Number(
+          Math.round(Environment.SUBSCRIPTION_MONTHLY_FEE * proRate * 100) / 100
+        ),
+        description: "signup",
       })
       .then(() => res.sendStatus(204));
   }
