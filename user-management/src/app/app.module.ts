@@ -12,6 +12,7 @@ import { AuthMiddleware } from "../middlewares/auth.middleware";
 import { BillingPlanModule } from "../database/billingPlan/billingPlan.module";
 import { SubscriptionChargeModule } from "../database/subscriptionCharge/subscriptionCharge.module";
 import { JwtModule } from "../services/jwt/jwt.module";
+import { CronModule } from "../services/cron/cron.module";
 
 @Module({
   controllers: [AppController],
@@ -28,6 +29,7 @@ import { JwtModule } from "../services/jwt/jwt.module";
     BillingPlanModule,
     SubscriptionChargeModule,
     JwtModule,
+    CronModule,
   ],
 })
 export class AppModule {
