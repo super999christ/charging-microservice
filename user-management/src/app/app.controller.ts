@@ -29,9 +29,10 @@ import { AxiosError } from "axios";
 import { convert2StandardPhoneNumber } from "../utils/phone.util";
 import { SendLoginAuthcodeDto } from "./dtos/SendLoginAuthcode.dto";
 import { BillingPlanService } from "../database/billingPlan/billingPlan.service";
-import { JwtService } from "@nestjs/jwt";
+
 import Environment from "../config/env";
 import { SubscriptionChargeService } from "../database/subscriptionCharge/subscriptionCharge.service";
+import { JwtService } from "../services/jwt/jwt.service";
 
 @Controller()
 export class AppController {
@@ -56,7 +57,7 @@ export class AppController {
   @Inject()
   private subscriptionChargeService: SubscriptionChargeService;
 
-  @Inject(JwtService)
+  @Inject()
   private jwtService: JwtService;
 
   @Post("login")
@@ -613,11 +614,12 @@ export class AppController {
         user.phoneNumber
       );
 
-    const token = this.jwtService.sign({
+    const token = this.jwtService.generateToken({
       sub: user.id,
       userId: user.id,
       subscription_customer,
     });
+
     return res.send({ token });
   }
 
@@ -628,9 +630,7 @@ export class AppController {
     @Response() res: IResponse
   ) {
     try {
-      const payload = this.jwtService.verify(body.token.split(" ")[1], {
-        ignoreExpiration: false,
-      });
+      const payload = this.jwtService.validateToken(body.token);
       if (!payload) return res.send({ isValid: false });
 
       if (payload) return res.send({ isValid: true, ...payload });
@@ -656,7 +656,7 @@ export class AppController {
 
     const isUserSubscribed = user.billingPlan.billingPlan === "subscription";
 
-    this.userService.saveUser({
+    this.userService.updateUserById(user.id, {
       vehicleCount,
       billingPlanId: billingPlans.find((p) => p.billingPlan === "subscription")!
         .id,
@@ -665,7 +665,8 @@ export class AppController {
     const dayOfMonth = new Date().getDate();
     const daysInMonth = new Date(
       new Date().getFullYear(),
-      new Date().getMonth()
+      new Date().getMonth() + 1,
+      0
     ).getDate();
     const proRate = dayOfMonth / daysInMonth;
 

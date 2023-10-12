@@ -65,7 +65,9 @@ export class UserService {
   }
 
   public async getSubscriptionUsers() {
-    const users = await this.userRepository.find({ where: { billingPlanId: 2, active: true } });
+    const users = await this.userRepository.find({
+      where: { billingPlanId: 2, active: true },
+    });
     return users;
   }
 }

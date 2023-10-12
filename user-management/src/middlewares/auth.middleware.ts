@@ -1,24 +1,24 @@
-import { Injectable, NestMiddleware } from "@nestjs/common";
-import axios from "axios";
+import { Injectable, NestMiddleware, Inject } from "@nestjs/common";
 import { NextFunction, Request, Response } from "express";
-import Environment from "../config/env";
+import { JwtService } from "../services/jwt/jwt.service";
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
-  use(request: Request, response: Response, next: NextFunction) {
-    axios
-      .post(`${Environment.SERVICE_API_AUTH_URL}/validate-user-token`, {
-        token: request.headers.authorization,
-      })
-      .then((res) => {
-        const { isValid, userId, subscription_customer } = res.data;
-        if (isValid) {
-          (request as any).userId = userId;
-          (request as any).subscription_customer = subscription_customer;
-          next();
-        } else {
-          response.sendStatus(401);
-        }
-      });
+  @Inject()
+  private jwtService: JwtService;
+
+  use(request: Request, res: Response, next: NextFunction) {
+    const decodedToken = this.jwtService.validateToken(
+      request.headers.authorization!
+    );
+
+    if (!decodedToken) return res.sendStatus(401);
+
+    const { userId, subscription_customer } = decodedToken;
+
+    (request as any).userId = userId;
+    (request as any).subscription_customer = subscription_customer;
+
+    return next();
   }
 }
