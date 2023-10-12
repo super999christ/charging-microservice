@@ -4,6 +4,7 @@ import { ExternalService } from "../external/external.service";
 import { SubscriptionChargeService } from "../../database/subscriptionCharge/subscriptionCharge.service";
 import { UserService } from "../../database/user/user.service";
 import { Cron } from "@nestjs/schedule";
+import { PinoLogger, InjectPinoLogger } from "nestjs-pino";
 
 @Injectable()
 export class CronService {
@@ -14,27 +15,34 @@ export class CronService {
   @Inject()
   private subscriptionChargesService: SubscriptionChargeService;
 
-  @Cron("0 0-23/2 * * *")
+  @InjectPinoLogger(CronService.name)
+  private readonly logger: PinoLogger;
+
+  @Cron(Environment.SUBSCRIPTION_PROCESSING_CRON_SCHEDULE)
   public async runSubscriptionProcessing() {
+    this.logger.info("Running subscription processing cron job...");
+
     const today = new Date();
-    if (today.getDate() !== 1 || today.getHours() < 12) return;
-    const users = await this.userService.getSubscriptionUsers();
-    for (const user of users) {
-      try {
-        const charges =
-          await this.subscriptionChargesService.findSubscriptionChargesAround(
-            user.id,
-            today
-          );
-        if (charges.length) continue;
-        await this.subscriptionChargesService.saveSubscriptionCharges({
-          userId: user.id,
-          description: "monthly_fee",
-          chargeStatus: "pending",
-          amount: Environment.SUBSCRIPTION_MONTHLY_FEE /* * user.vehicleCount*/,
-        });
-      } catch (err) {
-        console.error("@Error: ", err);
+    if (today.getDate() === 1) {
+      const users = await this.userService.getSubscriptionUsers();
+      for (const user of users) {
+        try {
+          const charges =
+            await this.subscriptionChargesService.findSubscriptionChargesAround(
+              user.id,
+              today
+            );
+          if (charges.length) continue;
+          await this.subscriptionChargesService.saveSubscriptionCharges({
+            userId: user.id,
+            description: "monthly_fee",
+            chargeStatus: "pending",
+            amount:
+              Environment.SUBSCRIPTION_MONTHLY_FEE /* * user.vehicleCount*/,
+          });
+        } catch (err) {
+          this.logger.error(err);
+        }
       }
     }
 
@@ -58,7 +66,7 @@ export class CronService {
           await this.subscriptionChargesService.saveSubscriptionCharges(charge);
         }
       } catch (err) {
-        console.error("@Error: ", err);
+        this.logger.error(err);
       }
     }
   }
