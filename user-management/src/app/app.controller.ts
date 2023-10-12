@@ -676,7 +676,9 @@ export class AppController {
       .save({
         userId,
         chargeStatus: "pending",
-        amount: Environment.SUBSCRIPTION_MONTHLY_FEE * proRate,
+        amount: Number(
+          Math.round(Environment.SUBSCRIPTION_MONTHLY_FEE * proRate * 100) / 100
+        ),
         description: "signup",
       })
       .then(() => res.sendStatus(204));
