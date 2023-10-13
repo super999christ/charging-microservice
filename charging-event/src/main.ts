@@ -1,7 +1,7 @@
 import { NestFactory } from "@nestjs/core";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app/app.module";
-import { Logger } from "nestjs-pino";
+import { Logger, LoggerErrorInterceptor } from "nestjs-pino";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -15,6 +15,7 @@ async function bootstrap() {
   SwaggerModule.setup("docs", app, document);
 
   app.enableCors();
+  app.useGlobalInterceptors(new LoggerErrorInterceptor());
   app.useLogger(app.get(Logger));
 
   await app.startAllMicroservices();
