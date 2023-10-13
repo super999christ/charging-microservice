@@ -277,6 +277,7 @@ export class AppController {
             lastName,
             verified: true,
             tcFlag: true,
+            active: true,
             phoneNumber,
           });
           const { data: tokenData } =
@@ -332,6 +333,7 @@ export class AppController {
         lastName,
         verified: true,
         tcFlag: true,
+        active: true,
         phoneNumber,
       });
       const { data: tokenData } = await this.externalService.asRequestUserToken(

@@ -32,7 +32,7 @@ export class User {
   @Column({ name: "Verified", type: "bool", default: false })
   verified: boolean;
 
-  @Column({ name: "Active", type: "bool", default: false })
+  @Column({ name: "Active", type: "bool", default: true })
   active: boolean;
 
   @Column({ name: "TCFlag", type: "bool", default: false })
