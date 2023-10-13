@@ -25,6 +25,7 @@ export class SubscriptionChargeService {
       where: {
         createdDate: Between(startDate, endDate),
         chargeStatus: "pending",
+        description: 'monthly_fee',
         userId,
       },
     });
