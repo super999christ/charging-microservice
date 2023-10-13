@@ -373,13 +373,24 @@ export class AppController {
 
   @Put("profile")
   public async updateUser(
-    @Body() body: { billingPlanId: number; vehicleCount: number },
+    @Body()
+    body: {
+      billingPlanId: number;
+      vehicleCount: number;
+      stripeCustomerId: string;
+    },
     @Request() req: IRequest,
     @Response() res: IResponse
   ) {
     const userId = (req as any).userId;
-    const { billingPlanId, vehicleCount } = body;
-    this.userService.updateUserById(userId, { billingPlanId, vehicleCount });
+    const user = await this.userService.getUser(userId);
+    const { billingPlanId, vehicleCount, stripeCustomerId } = body;
+    this.userService.updateUserById(userId, {
+      ...user,
+      billingPlanId,
+      vehicleCount,
+      stripeCustomerId,
+    });
     return res.sendStatus(204);
   }
 
