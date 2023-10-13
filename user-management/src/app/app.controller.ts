@@ -115,6 +115,10 @@ export class AppController {
           response.status(400).send("Invalid Password");
           return;
         }
+        if (!user.active) {
+          response.status(400).send("Account disabled");
+          return;
+        }
         const { data } = await this.externalService.asRequestUserToken({
           userId: user.id,
         });
