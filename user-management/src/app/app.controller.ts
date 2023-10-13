@@ -654,12 +654,14 @@ export class AppController {
 
     const billingPlans = await this.billingPlansService.getBillingPlans();
 
-    const isUserSubscribed = user.billingPlan.billingPlan === "subscription";
+    const isUserSubscribed =
+      user.billingPlan.billingPlan.toLowerCase() === "subscription";
 
     this.userService.updateUserById(user.id, {
       vehicleCount,
-      billingPlanId: billingPlans.find((p) => p.billingPlan === "subscription")!
-        .id,
+      billingPlanId: billingPlans.find(
+        (p) => p.billingPlan.toLowerCase() === "subscription"
+      )!.id,
     });
 
     const dayOfMonth = new Date().getDate();
