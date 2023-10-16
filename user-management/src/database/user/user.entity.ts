@@ -41,6 +41,9 @@ export class User {
   @Column({ name: "ChargingNotify", type: "bool", default: false })
   chargingNotify: boolean;
 
+  @Column({ name: "StripePaymentMethodId", type: "varchar", default: "" })
+  stripePmId: string;
+
   @Column({ name: "StripeCustomerId", type: "varchar", default: "" })
   stripeCustomerId: string;
 
