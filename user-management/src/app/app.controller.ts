@@ -378,18 +378,25 @@ export class AppController {
       billingPlanId: number;
       vehicleCount: number;
       stripeCustomerId: string;
+      stripePaymentMethodId: string;
     },
     @Request() req: IRequest,
     @Response() res: IResponse
   ) {
     const userId = (req as any).userId;
     const user = await this.userService.getUser(userId);
-    const { billingPlanId, vehicleCount, stripeCustomerId } = body;
+    const {
+      billingPlanId,
+      vehicleCount,
+      stripeCustomerId,
+      stripePaymentMethodId,
+    } = body;
     this.userService.updateUserById(userId, {
       ...user,
       billingPlanId,
       vehicleCount,
       stripeCustomerId,
+      stripePaymentMethodId,
     });
     return res.sendStatus(204);
   }
