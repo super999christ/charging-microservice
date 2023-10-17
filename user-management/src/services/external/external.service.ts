@@ -78,4 +78,12 @@ export class ExternalService {
       { headers: { Authorization: authorization } }
     );
   }
+
+  public async psGetCustomerPayment(authorization: string) {
+    const { data } = await axios.get(
+      `${Environment.SERVICE_PAYMENT_URL}/customer-payment`,
+      { headers: { Authorization: authorization } }
+    );
+    return data;
+  }
 }

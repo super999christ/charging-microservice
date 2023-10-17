@@ -70,4 +70,30 @@ export class CronService {
       }
     }
   }
+
+  @Cron(Environment.CUSTOMER_PROCESSING_CRON_SCHEDULE)
+  public async runCustomerProcessing() {
+    this.logger.info("Running customer processing (one-time) cron job...");
+
+    const users = await this.userService.getAllUsers();
+    for (const user of users) {
+      try {
+        if (!user.stripeCustomerId) {
+          const { data: auth } = await this.externalService.asRequestUserToken({
+            userId: user.id,
+          });
+          const customerInfo = await this.externalService.psGetCustomerPayment(
+            `Bearer ${auth.token}`
+          );
+          if (customerInfo.customerId) {
+            user.stripeCustomerId = customerInfo.customerId;
+            user.stripePaymentMethodId = customerInfo.paymentMethodId;
+            await this.userService.saveUser(user);
+          }
+        }
+      } catch (err) {
+        this.logger.error(err);
+      }
+    }
+  }
 }

@@ -19,6 +19,11 @@ export class UserService {
     return this.userRepository.save(userDetails);
   }
 
+  public async getAllUsers() {
+    const users = await this.userRepository.find();
+    return users;
+  }
+
   public async getUser(userId: string) {
     const user = await this.userRepository.findOneBy({ id: userId });
     return user;
