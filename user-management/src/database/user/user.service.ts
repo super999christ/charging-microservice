@@ -43,7 +43,7 @@ export class UserService {
     return user || null;
   }
 
-  public async resetPassword(email: string, password: string) {
+  public async updatePassword(email: string, password: string) {
     const hashedPassword = await bcrypt.hash(password!, Environment.HASH_SALT);
     const user = await this.userRepository.update(
       { email },
@@ -53,15 +53,7 @@ export class UserService {
   }
 
   public async updateUserById(userId: string, userDetails: DeepPartial<User>) {
-    const userInfo = { ...userDetails };
-    if (userInfo.password) {
-      userInfo.password = await bcrypt.hash(
-        userInfo.password,
-        Environment.HASH_SALT
-      );
-    }
-    const user = await this.userRepository.update({ id: userId }, userInfo);
-    return user;
+    return this.userRepository.update({ id: userId }, userDetails);
   }
 
   public async getSubscriptionUsers() {

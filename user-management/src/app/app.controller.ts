@@ -106,19 +106,14 @@ export class AppController {
     phoneNumber = convert2StandardPhoneNumber(phoneNumber);
     try {
       let user = await this.userService.getUserByPhone(phoneNumber);
-      if (!user) {
-        response.status(404).send("Phone number not registered");
-        return;
-      } else {
+      if (!user)
+        return response.status(404).send("Phone number not registered");
+      else {
         user = await this.userService.validateUser(user.email, pinCode);
-        if (!user) {
-          response.status(400).send("Invalid Password");
-          return;
-        }
-        if (!user.active) {
-          response.status(400).send("Account disabled");
-          return;
-        }
+        if (!user) return response.status(400).send("Invalid Password");
+
+        if (!user.active) return response.status(400).send("Account disabled");
+
         const { data } = await this.externalService.asRequestUserToken({
           userId: user.id,
         });
@@ -126,7 +121,7 @@ export class AppController {
       }
     } catch (err) {
       this.logger.error(err);
-      response.status(400).send("Invalid Password");
+      return response.status(500).send("Failed to login");
     }
   }
 
@@ -374,7 +369,14 @@ export class AppController {
   @Put("profile")
   public async updateUser(
     @Body()
-    body: {
+    {
+      billingPlan,
+      billingPlanId,
+      vehicleCount,
+      stripeCustomerId,
+      stripePaymentMethodId,
+    }: {
+      billingPlan: any;
       billingPlanId: number;
       vehicleCount: number;
       stripeCustomerId: string;
@@ -385,14 +387,10 @@ export class AppController {
   ) {
     const userId = (req as any).userId;
     const user = await this.userService.getUser(userId);
-    const {
-      billingPlanId,
-      vehicleCount,
-      stripeCustomerId,
-      stripePaymentMethodId,
-    } = body;
+
     this.userService.updateUserById(userId, {
       ...user,
+      billingPlan,
       billingPlanId,
       vehicleCount,
       stripeCustomerId,
@@ -412,9 +410,7 @@ export class AppController {
     const userId = (req as any).userId;
     const { password } = params;
     try {
-      await this.userService.updateUserById(userId, {
-        password,
-      });
+      await this.userService.updatePassword(userId, password);
       response.send("success");
     } catch (err) {
       if (err instanceof AxiosError)
@@ -542,7 +538,7 @@ export class AppController {
   ) {
     const { email, password } = body;
     try {
-      const data = this.userService.resetPassword(email, password);
+      this.userService.updatePassword(email, password);
       response.send("success");
     } catch (err) {
       this.logger.error(err);
