@@ -71,8 +71,13 @@ export class CronService {
     }
   }
 
+  private doneCustomerProcessing: boolean = false;
+
   @Cron(Environment.CUSTOMER_PROCESSING_CRON_SCHEDULE)
   public async runCustomerProcessing() {
+    if (this.doneCustomerProcessing)
+      return;
+    this.doneCustomerProcessing = true;
     this.logger.info("Running customer processing (one-time) cron job...");
 
     const users = await this.userService.getAllUsers();
