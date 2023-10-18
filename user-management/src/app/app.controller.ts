@@ -640,6 +640,7 @@ export class AppController {
       sub: user.id,
       userId: user.id,
       subscription_customer,
+      payment_attached: user.stripePaymentMethodId ? true : false 
     });
 
     return res.send({ token });
