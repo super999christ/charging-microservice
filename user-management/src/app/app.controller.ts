@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Inject,
   Post,
   Put,
@@ -690,7 +692,8 @@ export class AppController {
       new Date().getMonth() + 1,
       0
     ).getDate();
-    const proRate = dayOfMonth / daysInMonth;
+    const remainingDays = daysInMonth - dayOfMonth;
+    const proRate = remainingDays / daysInMonth;
 
     if (isUserSubscribed) return res.sendStatus(204);
 
@@ -707,7 +710,6 @@ export class AppController {
   }
 
   @Get("healthz")
-  public async healthz(@Response() res: IResponse) {
-    return res.sendStatus(200);
-  }
+  @HttpCode(HttpStatus.OK)
+  public async healthz() {}
 }
