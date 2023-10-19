@@ -245,6 +245,8 @@ export class AppController {
         await this.externalService.umValidatePhone({ phoneNumber: chargingEvent.phoneNumber })
       ).data;
 
+      status.billingPlanId = user.billingPlanId;
+
       if (status.status != 0 && (status.chargeComplete != 0 || ["idle", "offline", "iot_error", "payment_error"].includes(status.sessionStatus))) {
         if (chargingEvent) {
           if (chargingEvent.sessionStatus && chargingEvent.sessionStatus !== 'in_progress') {
