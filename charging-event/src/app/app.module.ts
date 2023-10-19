@@ -16,7 +16,7 @@ import { CronModule } from "../services/cron/cron.module";
     ConfigModule.forRoot(),
     TypeOrmModule.forRoot(typeOrmConfig),
     LoggerModule.forRoot({
-      exclude: [{ method: RequestMethod.ALL, path: "healthz" }]
+      exclude: [{ method: RequestMethod.ALL, path: "healthz" }],
     }),
     ChargingEventModule,
     ExternalModule,

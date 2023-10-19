@@ -3,7 +3,7 @@
     "tsc": "tsc",
     "dev": "nest start --watch",
     "build": "nest build",
-    "start:prod": "node dist/main",
+    "start": "nest start",
     "migration:generate": "typeorm migration:generate --outputJs true --dataSource dist/typeorm/datasource.js",
     "migration:run": "typeorm migration:run --dataSource dist/typeorm/datasource.js",
     "migration:show": "typeorm migration:show --dataSource dist/typeorm/datasource.js"

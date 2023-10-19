@@ -1,13 +1,10 @@
 import { Module } from "@nestjs/common";
 import { ChargingIoTService } from "./charging-iot.service";
 import { SimulatorModule } from "../simulator/simulator.module";
-import { LoggerModule } from "nestjs-pino";
 
 @Module({
   providers: [ChargingIoTService],
   exports: [ChargingIoTService],
-  imports: [SimulatorModule, LoggerModule]
+  imports: [SimulatorModule],
 })
-export class ChargingIoTModule {
-
-};
+export class ChargingIoTModule {}
