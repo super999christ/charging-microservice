@@ -16,4 +16,4 @@ RUN npm run build
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-CMD npm run dev
+CMD npm run start
