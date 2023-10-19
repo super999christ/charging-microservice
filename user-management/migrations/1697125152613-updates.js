@@ -5,32 +5,40 @@ module.exports = class Updates1697125152613 {
 
   async up(queryRunner) {
     await queryRunner.query(
-      `ALTER TABLE "tbl_Users" DROP CONSTRAINT "fk_billing_plan_users"`
+      `CREATE TABLE IF NOT EXISTS "tbl_Subscription_Charges" ("SubscriptionChargeId" BIGSERIAL NOT NULL, "UserId" uuid NOT NULL, "Amount" double precision NOT NULL, "Description" character varying NOT NULL DEFAULT true, "ChargeStatus" character varying NOT NULL DEFAULT true, "PaymentIntentId" character varying, "CreatedDate" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "UpdatedDate" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_328556f813f93774d6217e33850" PRIMARY KEY ("SubscriptionChargeId"))`
     );
     await queryRunner.query(
-      `ALTER TABLE "tbl_Subscription_Charges" DROP CONSTRAINT "fk_subscription_users"`
+      `CREATE TABLE IF NOT EXISTS "tbl_Billing_Plans" ("BillingPlanId" SMALLSERIAL NOT NULL, "BillingPlan" character varying NOT NULL, "Active" boolean NOT NULL DEFAULT true, "CreatedDate" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "UpdatedDate" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_d87a5464300f69c20c05e8197e1" PRIMARY KEY ("BillingPlanId"))`
     );
     await queryRunner.query(
-      `ALTER TABLE "tbl_Billing_Plans" DROP CONSTRAINT "PK_Billing_Plans"`
+      `ALTER TABLE "tbl_Users" DROP CONSTRAINT IF EXISTS "fk_billing_plan_users"`
     );
     await queryRunner.query(
-      `ALTER TABLE "tbl_Billing_Plans" DROP COLUMN "BillingPlanId"`
+      `ALTER TABLE IF EXISTS "tbl_Subscription_Charges" DROP CONSTRAINT IF EXISTS "fk_subscription_users"`
     );
     await queryRunner.query(
-      `ALTER TABLE "tbl_Billing_Plans" ADD "BillingPlanId" SERIAL NOT NULL`
+      `ALTER TABLE IF EXISTS "tbl_Billing_Plans" DROP CONSTRAINT IF EXISTS "PK_Billing_Plans"`
     );
     await queryRunner.query(
-      `ALTER TABLE "tbl_Billing_Plans" ADD CONSTRAINT "PK_d87a5464300f69c20c05e8197e1" PRIMARY KEY ("BillingPlanId")`
+      `ALTER TABLE IF EXISTS "tbl_Billing_Plans" DROP COLUMN IF EXISTS "BillingPlanId"`
     );
     await queryRunner.query(
-      `ALTER TABLE "tbl_Users" DROP COLUMN "BillingPlanId"`
+      `ALTER TABLE IF EXISTS "tbl_Billing_Plans" ADD "BillingPlanId" SERIAL NOT NULL`
+    );
+    await queryRunner.query(
+      `ALTER TABLE IF EXISTS "tbl_Billing_Plans" ADD CONSTRAINT "PK_d87a5464300f69c20c05e8197e1" PRIMARY KEY ("BillingPlanId")`
+    );
+    await queryRunner.query(
+      `ALTER TABLE "tbl_Users" DROP COLUMN IF EXISTS "BillingPlanId"`
     );
     await queryRunner.query(
       `ALTER TABLE "tbl_Users" ADD "BillingPlanId" integer DEFAULT '1'`
     );
-    // await queryRunner.query(`ALTER TABLE "tbl_Users" ADD CONSTRAINT "UQ_b2d8baa4fbc171ee56f35de1dd6" UNIQUE ("BillingPlanId")`);
     await queryRunner.query(
-      `ALTER TABLE "tbl_Users" DROP COLUMN "VehicleCount"`
+      `ALTER TABLE "tbl_Users" ADD CONSTRAINT "UQ_b2d8baa4fbc171ee56f35de1dd6" UNIQUE ("BillingPlanId")`
+    );
+    await queryRunner.query(
+      `ALTER TABLE "tbl_Users" DROP COLUMN IF EXISTS "VehicleCount"`
     );
     await queryRunner.query(
       `ALTER TABLE "tbl_Users" ADD "VehicleCount" bigint DEFAULT '1'`
