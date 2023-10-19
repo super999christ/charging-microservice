@@ -49,6 +49,7 @@ export class CronService {
           if (user.billingPlanId != 2) { // <> not subscription
             const { data: paymentIntent } = await this.externalService.psCompleteCharge({
               amount: totalCost,
+              idempotencyKey: `transaction_charge_${event.id}`
             }, `Bearer ${auth.token}`);
             if (paymentIntent.id) {
               if (originalSessionStatus === 'in_progress')

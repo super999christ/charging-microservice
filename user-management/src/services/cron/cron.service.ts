@@ -57,6 +57,7 @@ export class CronService {
           await this.externalService.psCompleteCharge(
             {
               amount: charge.amount,
+              idempotencyKey: `subscription_charge_${charge.id}`
             },
             `Bearer ${auth.token}`
           );

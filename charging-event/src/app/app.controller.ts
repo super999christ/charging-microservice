@@ -294,6 +294,7 @@ export class AppController {
               if (user.billingPlanId != 2) {   // <> not subscription
                 const { data: paymentIntent } = await this.externalService.psCompleteCharge({
                   amount: actualCost,
+                  idempotencyKey: `transaction_charge_${chargingEvent.id}`
                 }, request.headers.authorization as string);
                 chargingEvent.paymentIntentId = paymentIntent.id;
               } else { // is transaction
@@ -383,6 +384,7 @@ export class AppController {
               if (user.billingPlanId != 2) {    // <> not subscription
                 const { data: paymentIntent } = await this.externalService.psCompleteCharge({
                   amount: actualCost,
+                  idempotencyKey: `transaction_charge_${chargingEvent.id}`
                 }, request.headers.authorization as string);
                 chargingEvent.paymentIntentId = paymentIntent.id;
                 chargingEvent.sessionStatus = "stopped";
