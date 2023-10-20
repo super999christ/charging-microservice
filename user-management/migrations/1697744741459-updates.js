@@ -5,10 +5,10 @@ module.exports = class Updates1697744741459 {
 
   async up(queryRunner) {
     await queryRunner.query(
-      `ALTER TABLE "tbl_Users" ADD "StripeCustomerId" character varying`
+      `ALTER TABLE "tbl_Users" ADD IF NOT EXISTS "StripeCustomerId" character varying`
     );
     await queryRunner.query(
-      `ALTER TABLE "tbl_Users" ADD "StripePaymentMethodId" character varying`
+      `ALTER TABLE "tbl_Users" ADD IF NOT EXISTS "StripePaymentMethodId" character varying`
     );
     await queryRunner.query(
       `CREATE TABLE IF NOT EXISTS "tbl_Password_Resets​" ("PasswordResetId" uuid NOT NULL DEFAULT uuid_generate_v4(), "Email" character varying NOT NULL, "Verified" boolean NOT NULL DEFAULT false, "EmailNotificationId" bigint, "CreatedDate" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "UpdatedDate" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_92073426efdc013489d97097d10" PRIMARY KEY ("PasswordResetId"))`
@@ -24,11 +24,11 @@ module.exports = class Updates1697744741459 {
     );
 
     await queryRunner.query(
-      `INSERT INTO public."tbl_Billing_Plans"("BillingPlanId", "BillingPlan", "Active", "CreatedDate", "UpdatedDate") VALUES (1, 'Transaction', true, '10/02/2023', '10/02/2023')`
+      `INSERT INTO public."tbl_Billing_Plans"("BillingPlanId", "BillingPlan", "Active", "CreatedDate", "UpdatedDate") VALUES (1, 'Transaction', true, '10/02/2023', '10/02/2023') ON CONFLICT DO NOTHING`
     );
 
     await queryRunner.query(
-      `INSERT INTO public."tbl_Billing_Plans"("BillingPlanId", "BillingPlan", "Active", "CreatedDate", "UpdatedDate") VALUES (2, 'Subscription', true, '10/02/2023', '10/02/2023');`
+      `INSERT INTO public."tbl_Billing_Plans"("BillingPlanId", "BillingPlan", "Active", "CreatedDate", "UpdatedDate") VALUES (2, 'Subscription', true, '10/02/2023', '10/02/2023') ON CONFLICT DO NOTHING `
     );
   }
 
