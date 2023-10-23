@@ -50,11 +50,7 @@ export class ChargingIoTService {
         `${Environment.SERVICE_CHARGING_IOT_MANAGE_CHG_URL}/manage-charging?eventId=${body.eventId}&eventType=${body.eventType}`
       )
       .then((res) => this.handleIotResponse(res))
-      .catch((err) => {
-        throw Error(
-          "Sorry, we're running into some issues. Please try again after sometime."
-        );
-      });
+      .catch((err) => this.handleIoTError(err));
   }
 
   public async completeCharging(body: CompleteChargingDto) {
@@ -67,11 +63,7 @@ export class ChargingIoTService {
         `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${body.eventId}`
       )
       .then((res) => this.handleIotResponse(res))
-      .catch((err) => {
-        throw Error(
-          "Sorry, we're running into some issues. Please try again after sometime."
-        );
-      });
+      .catch((err) => this.handleIoTError(err));
   }
 
   public handleIotResponse(res: AxiosResponse<any, any>) {
@@ -88,5 +80,13 @@ export class ChargingIoTService {
       this.logger.error("IOT service returned bad data %o", data);
 
     return res;
+  }
+
+  public handleIoTError(err: any) {
+    this.logger.error(err);
+
+    throw Error(
+      "Sorry, we're running into some issues. Please try again after sometime."
+    );
   }
 }
