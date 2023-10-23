@@ -11,5 +11,5 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   entities: ["dist/**/*.entity.js"],
   migrations: ["migrations/*.js"],
   migrationsTableName: "tbl_Migration_History_Charging_Event",
-  migrationsRun: true,
+  migrationsRun: false,
 };
