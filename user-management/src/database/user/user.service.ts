@@ -10,11 +10,11 @@ export class UserService {
   @InjectRepository(User)
   private userRepository: Repository<User>;
 
-  public async saveUser(userDetails: DeepPartial<User>) {
-    const hashedPassword = await bcrypt.hash(
+  public async saveUser(userDetails: DeepPartial<User>, shouldHashPassword: boolean = true) {
+    const hashedPassword = shouldHashPassword ? (await bcrypt.hash(
       userDetails.password!,
       Environment.HASH_SALT
-    );
+    )) : userDetails.password;
     userDetails.password = hashedPassword;
     return this.userRepository.save(userDetails);
   }

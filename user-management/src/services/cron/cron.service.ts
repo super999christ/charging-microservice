@@ -94,7 +94,7 @@ export class CronService {
           if (customerInfo.customerId) {
             user.stripeCustomerId = customerInfo.customerId;
             user.stripePaymentMethodId = customerInfo.paymentMethodId;
-            await this.userService.saveUser(user);
+            await this.userService.saveUser(user, false);
           }
         }
       } catch (err) {
