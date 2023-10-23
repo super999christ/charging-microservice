@@ -82,7 +82,7 @@ export class ChargingIoTService {
     return res;
   }
 
-  public handleIoTError(err: any) {
+  public handleIoTError(err: any): never {
     this.logger.error(err);
 
     throw Error(
