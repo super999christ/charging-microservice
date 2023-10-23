@@ -1,7 +1,8 @@
 import * as dotenv from "dotenv";
 
 dotenv.config();
-dotenv.config({ path: "../../.env" });
+if (process.env.CONSUMER_ENVIRONMENT === 'local')
+  dotenv.config({ path: "../.env" });
 
 const Environment = {
   DATABASE_HOST: String(process.env["POSTGRES_HOST"]),

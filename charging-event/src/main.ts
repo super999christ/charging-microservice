@@ -20,7 +20,7 @@ async function bootstrap() {
 
   await app.startAllMicroservices();
 
-  await app.listen(3000);
+  await app.listen(process.env.CONSUMER_ENVIRONMENT === 'local' ? 3004 : 3000);
 
   console.log("ChargingEvent Microservice is listening");
 }
