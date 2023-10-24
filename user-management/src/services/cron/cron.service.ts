@@ -57,7 +57,7 @@ export class CronService {
           await this.externalService.psCompleteCharge(
             {
               amount: charge.amount,
-              idempotencyKey: `subscription_charge_${charge.id}`
+              idempotencyKey: `subscription_charge_${charge.id}`,
             },
             `Bearer ${auth.token}`
           );
@@ -74,10 +74,9 @@ export class CronService {
 
   private doneCustomerProcessing: boolean = false;
 
-  @Cron(Environment.CUSTOMER_PROCESSING_CRON_SCHEDULE)
+  //@Cron(Environment.CUSTOMER_PROCESSING_CRON_SCHEDULE)
   public async runCustomerProcessing() {
-    if (this.doneCustomerProcessing)
-      return;
+    if (this.doneCustomerProcessing) return;
     this.doneCustomerProcessing = true;
     this.logger.info("Running customer processing (one-time) cron job...");
 
