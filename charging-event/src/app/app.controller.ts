@@ -265,12 +265,23 @@ export class AppController {
           chargingEvent.totalChargeTime = status.sessionTotalDuration;
           chargingEvent.sessionStatus = status.sessionStatus;
 
-          const { data: chargingData } = await this.chargingIoTService.completeCharging({
-            eventId: body.eventId
-          });
-          if (chargingData.status == 0) {
-            exception = true;
-            throw Error("Error: bad JSON status from CompleteCharge");
+          let chargingData: any = {};
+          try {
+            chargingData = (await this.chargingIoTService.completeCharging({
+              eventId: body.eventId
+            })).data;
+            if (chargingData.status == 0) {
+              exception = true;
+              throw Error("Error: bad JSON status from CompleteCharge");
+            }
+          } catch (error) {
+            this.logger.error("IOT CompleteCharge error: ", error);
+            chargingEvent.sessionStatus = status.sessionStatus = 'iot_error';
+            chargingEvent.exceptionStatus = status.exceptionStatus = 'pending';
+            transactionLock[chargingEvent.id] = false;
+            await this.chargingEventService.saveChargingEvent(chargingEvent);
+            response.send(status);
+            return;
           }
           chargingEvent.totalCostDollars = Number(chargingData.sessionTotalCost) && Math.max(chargingData.sessionTotalCost, 0.5);
           if (status.chargeComplete != 0)
@@ -307,7 +318,6 @@ export class AppController {
             }
           } catch (err) {
             this.logger.error(err, "Payment Error");
-            status.error = 'Payment failed';
             chargingEvent.sessionStatus = status.sessionStatus = 'payment_error';
             chargingEvent.exceptionStatus = status.exceptionStatus = 'pending';
             transactionLock[chargingEvent.id] = false;
@@ -354,21 +364,35 @@ export class AppController {
           body
         );
         if (result.status == 1 && body.eventType === 'stop') {
-          const { data: status } = await this.chargingIoTService.getChargingStatus({
-            eventId: chargingEvent.id,
-            phoneNumber: chargingEvent.phoneNumber,
-            stationId: chargingEvent.stationId
-          });
+          let status: any = {}, chargingData: any = {};
           try {
+            status = (await this.chargingIoTService.getChargingStatus({
+              eventId: chargingEvent.id,
+              phoneNumber: chargingEvent.phoneNumber,
+              stationId: chargingEvent.stationId
+            })).data;
             if (chargingEvent.sessionStatus && chargingEvent.sessionStatus !== 'in_progress') {
-              this.logger.error("Duplicated charging %o", chargingEvent);
               result.error = "";
               response.send(result);
               return;
             }
-            const { data: chargingData } = await this.chargingIoTService.completeCharging({
+            chargingData = (await this.chargingIoTService.completeCharging({
               eventId: body.eventId
-            });
+            })).data;
+          } catch (error) {
+            this.logger.error(error);
+            transactionLock[chargingEvent.id] = false;
+            chargingEvent.sessionStatus = 'iot_error';
+            chargingEvent.exceptionStatus = 'pending';
+            await this.chargingEventService.saveChargingEvent(chargingEvent);
+            result = {
+              ...result,
+              ...chargingEvent
+            };
+            response.send(result);
+            return;
+          }
+          try {
             chargingEvent.totalCostDollars = Number(chargingData.sessionTotalCost) && Math.max(chargingData.sessionTotalCost, 0.5);
             if (!chargingEvent.paymentIntentId && chargingEvent.totalCostDollars && !transactionLock[chargingEvent.id]) {
               const timeZone = 'America/Los_Angeles';
