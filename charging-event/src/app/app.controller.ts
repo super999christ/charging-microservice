@@ -250,7 +250,6 @@ export class AppController {
       if (status.status != 0 && (status.chargeComplete != 0 || ["idle", "offline", "iot_error", "payment_error"].includes(status.sessionStatus))) {
         if (chargingEvent) {
           if (chargingEvent.sessionStatus && chargingEvent.sessionStatus !== 'in_progress') {
-            this.logger.error("Duplicated charging %o", chargingEvent);
             status.sessionStatus = chargingEvent.sessionStatus;
             status.sessionTotalCost = chargingEvent.totalCostDollars;
             response.send(status);
@@ -361,7 +360,6 @@ export class AppController {
           });
           try {
             if (chargingEvent.sessionStatus && chargingEvent.sessionStatus !== 'in_progress') {
-              this.logger.error("Duplicated charging %o", chargingEvent);
               result.error = "";
               response.send(result);
               return;
