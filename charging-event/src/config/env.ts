@@ -33,6 +33,4 @@ const Environment = {
   PROMO1_TO_DATE: new Date(process.env["PROMO1_TO_DATE"] as string),
 };
 
-console.log({Environment});
-
 export default Environment;
