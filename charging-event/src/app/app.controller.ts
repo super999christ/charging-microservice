@@ -318,7 +318,6 @@ export class AppController {
             }
           } catch (err) {
             this.logger.error(err, "Payment Error");
-            status.error = 'Payment failed';
             chargingEvent.sessionStatus = status.sessionStatus = 'payment_error';
             chargingEvent.exceptionStatus = status.exceptionStatus = 'pending';
             transactionLock[chargingEvent.id] = false;
