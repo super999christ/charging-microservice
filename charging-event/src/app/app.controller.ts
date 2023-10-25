@@ -276,7 +276,7 @@ export class AppController {
             }
           } catch (error) {
             status.error = 'ChargingIoT exception occurred';
-            this.logger.error("ChargingIoT CompleteCharging error: ", error);
+            this.logger.error("IOT CompleteCharge error: ", error);
             chargingEvent.sessionStatus = status.sessionStatus = 'iot_error';
             chargingEvent.exceptionStatus = status.exceptionStatus = 'pending';
             transactionLock[chargingEvent.id] = false;
