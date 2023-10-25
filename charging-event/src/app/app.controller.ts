@@ -275,7 +275,6 @@ export class AppController {
               throw Error("Error: bad JSON status from CompleteCharge");
             }
           } catch (error) {
-            status.error = 'ChargingIoT exception occurred';
             this.logger.error("IOT CompleteCharge error: ", error);
             chargingEvent.sessionStatus = status.sessionStatus = 'iot_error';
             chargingEvent.exceptionStatus = status.exceptionStatus = 'pending';
