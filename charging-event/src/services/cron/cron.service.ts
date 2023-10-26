@@ -61,6 +61,13 @@ export class CronService {
               phoneNumber: event.phoneNumber,
               stationId: event.stationId,
             });
+          event.chargeStatusPercentage = status.chargeStatusPercentage;
+          event.chargeDeliveredKwh = status.chargeDeliveredKwh;
+          event.chargeSpeedKwh = status.chargeSpeedKwh;
+          event.chargeVehicleRequestedKwh =
+            status.chargeVehicleRequestedKwh;
+          event.rateActivekWh = status.rateActivekWh;
+          event.totalChargeTime = status.sessionTotalDuration
           if (user.billingPlanId != 2) {
             // <> not subscription
             const { data: paymentIntent } =
@@ -76,20 +83,13 @@ export class CronService {
                 event.sessionStatus = "ex_in_progress";
               event.exceptionStatus = "completed";
               event.paymentIntentId = paymentIntent.id;
-              event.chargeStatusPercentage = status.chargeStatusPercentage;
-              event.chargeDeliveredKwh = status.chargeDeliveredKwh;
-              event.chargeSpeedKwh = status.chargeSpeedKwh;
-              event.chargeVehicleRequestedKwh =
-                status.chargeVehicleRequestedKwh;
-              event.rateActivekWh = status.rateActivekWh;
-              event.totalChargeTime = status.sessionTotalDuration;
-              await this.chargingEventService.saveChargingEvent(event);
             }
           } else {
-            // is transaction
-            event.sessionStatus = "completed_sub";
-            await this.chargingEventService.saveChargingEvent(event);
+            // is subscription
+            event.sessionStatus = "ex_completed_sub";
+            event.exceptionStatus = "completed";
           }
+          await this.chargingEventService.saveChargingEvent(event);
         } catch (err) {
           this.logger.error(err);
         }
