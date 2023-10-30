@@ -682,12 +682,12 @@ export class AppController {
   ) {
     const userId = (req as any).userId;
     const subscriptionPricing = await this.subscriptionPricingService.getActiveSubscriptionPricing();
-    const subscriptionUpdates = await this.subscriptionUpdateService.getAcceptedSubscriptionUpdatesByUserId(userId);
+    const subscriptionUpdates = await this.subscriptionUpdateService.getNonAcceptedSubscriptionUpdatesByUserId(userId);
     if (subscriptionPricing) {
       res.send({
         ...subscriptionPricing,
         newSubscriptionCustomer: (subscriptionUpdates.length === 0),
-        needsPricingUpdate: subscriptionUpdates.length > 0 && subscriptionUpdates[0].pricingId !== subscriptionPricing.id
+        needsPricingUpdate: (subscriptionUpdates.length > 0)
       });
     } else {
       res.status(500).send("Active subscription pricing does not exist");
@@ -748,13 +748,12 @@ export class AppController {
             description: "signup",
           });
       }
-      const subscriptionUpdates = await this.subscriptionUpdateService.getAcceptedSubscriptionUpdatesByUserId(userId);
-      if (subscriptionUpdates.length > 0 && subscriptionUpdates[0].pricingId !== activeSubscriptionPricing.id) {
+      const subscriptionUpdates = await this.subscriptionUpdateService.getNonAcceptedSubscriptionUpdatesByUserId(userId);
+      if (subscriptionUpdates.length > 0) {
         await this.subscriptionUpdateService.save({
           ...subscriptionUpdates[0],
           accepted: true,
-          updatedDate: new Date(),
-          pricingId: activeSubscriptionPricing?.id
+          updatedDate: new Date()
         });
       } else if (!subscriptionUpdates.length) {
         await this.subscriptionUpdateService

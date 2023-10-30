@@ -21,11 +21,4 @@ export class SubscriptionUpdateService {
   public async getNonAcceptedSubscriptionUpdatesByUserId(userId: string) {
     return await this.repository.findBy({ userId, accepted: false });
   }
-
-  public async getAcceptedSubscriptionUpdatesByUserId(userId: string) {
-    return await this.repository.find({
-      where: { userId, accepted: true },
-      order: { updatedDate: "DESC" }
-    });
-  }
 }
