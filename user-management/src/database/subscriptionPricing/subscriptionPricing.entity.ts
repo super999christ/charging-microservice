@@ -2,15 +2,15 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from "typeorm";
 
 @Entity("tbl_Subscription_Pricing")
 export class SubscriptionPricing {
-  @PrimaryGeneratedColumn("increment", {
+  @PrimaryColumn({
     name: "PricingId",
-    type: "bigint",
+    type: "int",
   })
   id: number;
 
@@ -20,7 +20,7 @@ export class SubscriptionPricing {
   @Column({ name: "Active", type: "bool", nullable: false })
   active: boolean;
 
-  @Column({ name: "BillingPlanId", type: "int", nullable: false })
+  @Column({ name: "BillingPlanId", type: "smallint", nullable: false })
   billingPlanId: number;
 
   @CreateDateColumn({ type: "timestamptz", name: "StartDate" })

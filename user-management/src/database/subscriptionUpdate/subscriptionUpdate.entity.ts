@@ -10,7 +10,7 @@ export class SubscriptionUpdate {
   @Column({ name: "UserId", type: "uuid", nullable: false })
   userId: string;
 
-  @Column({ name: "PricingId", type: "bigint", nullable: false })
+  @Column({ name: "PricingId", type: "int", nullable: false })
   pricingId: number;
 
   @Column({ name: "Accepted", type: "bool", nullable: false })

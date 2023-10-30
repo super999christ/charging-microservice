@@ -719,8 +719,8 @@ export class AppController {
       )!.id,
     });
 
-    const subscriptionPricing = await this.subscriptionPricingService.getActiveSubscriptionPricing();
-    if (!subscriptionPricing) {
+    const activeSubscriptionPricing = await this.subscriptionPricingService.getActiveSubscriptionPricing();
+    if (!activeSubscriptionPricing) {
       return res.status(500).send("No active subscription pricing");
     }
 
@@ -736,27 +736,36 @@ export class AppController {
     if (isUserSubscribed) return res.sendStatus(204);
 
     try {
-      const monthlyCharges = await this.subscriptionChargeService.findMonthlySubscriptionCharges(userId, new Date());
+      const monthlyCharges = await this.subscriptionChargeService.findMonthlySubscriptionCharges(userId);
       if (monthlyCharges.length === 0) {
         await this.subscriptionChargeService
           .save({
             userId,
             chargeStatus: "pending",
             amount: Number(
-              Math.round(subscriptionPricing.subscriptionFee * proRate * 100) / 100
+              Math.round(activeSubscriptionPricing.subscriptionFee * proRate * 100) / 100
             ),
             description: "signup",
           });
       }
-      const activeSubscriptionPricing = await this.subscriptionPricingService.getActiveSubscriptionPricing();
-      await this.subscriptionUpdateService
-        .save({
+      const subscriptionUpdates = await this.subscriptionUpdateService.getAcceptedSubscriptionUpdatesByUserId(userId);
+      if (subscriptionUpdates.length > 0 && subscriptionUpdates[0].pricingId !== activeSubscriptionPricing.id) {
+        await this.subscriptionUpdateService.save({
+          ...subscriptionUpdates[0],
           accepted: true,
-          createdDate: new Date(),
           updatedDate: new Date(),
-          pricingId: activeSubscriptionPricing?.id,
-          userId: userId
-        })
+          pricingId: activeSubscriptionPricing?.id
+        });
+      } else if (!subscriptionUpdates.length) {
+        await this.subscriptionUpdateService
+          .save({
+            accepted: true,
+            createdDate: new Date(),
+            updatedDate: new Date(),
+            pricingId: activeSubscriptionPricing?.id,
+            userId: userId
+          });
+      }
       res.sendStatus(204);
     } catch (err) {
       res.sendStatus(500);
