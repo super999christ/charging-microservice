@@ -38,4 +38,14 @@ export class SubscriptionChargeService {
       },
     });
   }
+
+  public async findMonthlySubscriptionCharges(userId: string, date: Date) {
+    const startDate = new Date(date.getFullYear(), date.getMonth(), 1);
+    return await this.repository.find({
+      where: {
+        createdDate: Between(startDate, date),
+        userId,
+      },
+    });
+  }
 }

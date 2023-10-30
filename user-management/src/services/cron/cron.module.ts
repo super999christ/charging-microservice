@@ -4,6 +4,7 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { ExternalModule } from "../external/external.module";
 import { SubscriptionChargeModule } from "../../database/subscriptionCharge/subscriptionCharge.module";
 import { UserModule } from "../../database/user/user.module";
+import { SubscriptionPricingModule } from "@root/src/database/subscriptionPricing/subscriptionPricing.module";
 
 @Module({
   providers: [CronService],
@@ -11,6 +12,7 @@ import { UserModule } from "../../database/user/user.module";
   imports: [
     ScheduleModule.forRoot(),
     SubscriptionChargeModule,
+    SubscriptionPricingModule,
     UserModule,
     ExternalModule,
   ],
