@@ -731,7 +731,7 @@ export class AppController {
       new Date().getMonth() + 1,
       0
     ).getDate();
-    const remainingDays = daysInMonth - dayOfMonth;
+    const remainingDays = (daysInMonth - dayOfMonth) + 1;
     const proRate = remainingDays / daysInMonth;
 
     if (isUserSubscribed) return res.sendStatus(204);
