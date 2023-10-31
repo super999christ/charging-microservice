@@ -21,4 +21,8 @@ export class SubscriptionUpdateService {
   public async getNonAcceptedSubscriptionUpdatesByUserId(userId: string) {
     return await this.repository.findBy({ userId, accepted: false });
   }
+
+  public async getSubscriptionupdatesbyUserId(userId: string) {
+    return await this.repository.findBy({ userId });
+  }
 }
