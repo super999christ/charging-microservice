@@ -683,10 +683,11 @@ export class AppController {
     const userId = (req as any).userId;
     const subscriptionPricing = await this.subscriptionPricingService.getActiveSubscriptionPricing();
     const subscriptionUpdates = await this.subscriptionUpdateService.getNonAcceptedSubscriptionUpdatesByUserId(userId);
+    const allSubscriptionUpdates = await this.subscriptionUpdateService.getSubscriptionupdatesbyUserId(userId);
     if (subscriptionPricing) {
       res.send({
         ...subscriptionPricing,
-        newSubscriptionCustomer: (subscriptionUpdates.length === 0),
+        newSubscriptionCustomer: (allSubscriptionUpdates.length === 0),
         needsPricingUpdate: (subscriptionUpdates.length > 0)
       });
     } else {
@@ -749,13 +750,14 @@ export class AppController {
           });
       }
       const subscriptionUpdates = await this.subscriptionUpdateService.getNonAcceptedSubscriptionUpdatesByUserId(userId);
+      const allSubscriptionUpdates = await this.subscriptionUpdateService.getSubscriptionupdatesbyUserId(userId);
       if (subscriptionUpdates.length > 0) {
         await this.subscriptionUpdateService.save({
           ...subscriptionUpdates[0],
           accepted: true,
           updatedDate: new Date()
         });
-      } else if (!subscriptionUpdates.length) {
+      } else if (!allSubscriptionUpdates.length) {
         await this.subscriptionUpdateService
           .save({
             accepted: true,
