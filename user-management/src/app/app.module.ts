@@ -13,6 +13,8 @@ import { BillingPlanModule } from "../database/billingPlan/billingPlan.module";
 import { SubscriptionChargeModule } from "../database/subscriptionCharge/subscriptionCharge.module";
 import { JwtModule } from "../services/jwt/jwt.module";
 import { CronModule } from "../services/cron/cron.module";
+import { SubscriptionUpdateModule } from "../database/subscriptionUpdate/subscriptionUpdate.module";
+import { SubscriptionPricingModule } from "../database/subscriptionPricing/subscriptionPricing.module";
 
 @Module({
   controllers: [AppController],
@@ -28,6 +30,8 @@ import { CronModule } from "../services/cron/cron.module";
     ExternalModule,
     BillingPlanModule,
     SubscriptionChargeModule,
+    SubscriptionUpdateModule,
+    SubscriptionPricingModule,
     JwtModule,
     CronModule,
   ],

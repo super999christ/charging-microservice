@@ -35,6 +35,8 @@ import { BillingPlanService } from "../database/billingPlan/billingPlan.service"
 import Environment from "../config/env";
 import { SubscriptionChargeService } from "../database/subscriptionCharge/subscriptionCharge.service";
 import { JwtService } from "../services/jwt/jwt.service";
+import { SubscriptionUpdateService } from "../database/subscriptionUpdate/subscriptionUpdate.service";
+import { SubscriptionPricingService } from "../database/subscriptionPricing/subscriptionPricing.service";
 
 @Controller()
 export class AppController {
@@ -58,6 +60,12 @@ export class AppController {
 
   @Inject()
   private subscriptionChargeService: SubscriptionChargeService;
+
+  @Inject()
+  private subscriptionUpdateService: SubscriptionUpdateService;
+
+  @Inject()
+  private subscriptionPricingService: SubscriptionPricingService;
 
   @Inject()
   private jwtService: JwtService;
@@ -119,6 +127,12 @@ export class AppController {
         const { data } = await this.externalService.asRequestUserToken({
           userId: user.id,
         });
+        if (user.billingPlanId === 2) {
+          const subscriptionUpdates = await this.subscriptionUpdateService.getNonAcceptedSubscriptionUpdatesByUserId(user.id);
+          if (subscriptionUpdates.length > 0) {
+            data.shouldRedirectToBillingPlan = true;
+          }
+        }
         response.status(200).send(data);
       }
     } catch (err) {
@@ -661,6 +675,25 @@ export class AppController {
     }
   }
 
+  @Get("active-subscription-pricing")
+  public async getActiveSubscriptionPricing(
+    @Request() req: IRequest,
+    @Response() res: IResponse
+  ) {
+    const userId = (req as any).userId;
+    const subscriptionPricing = await this.subscriptionPricingService.getActiveSubscriptionPricing();
+    const subscriptionUpdates = await this.subscriptionUpdateService.getNonAcceptedSubscriptionUpdatesByUserId(userId);
+    if (subscriptionPricing) {
+      res.send({
+        ...subscriptionPricing,
+        newSubscriptionCustomer: (subscriptionUpdates.length === 0),
+        needsPricingUpdate: (subscriptionUpdates.length > 0)
+      });
+    } else {
+      res.status(500).send("Active subscription pricing does not exist");
+    }
+  }
+
   @Put("subscriptions")
   public async createSubscription(
     @Body() { vehicleCount }: { vehicleCount: number },
@@ -686,6 +719,11 @@ export class AppController {
       )!.id,
     });
 
+    const activeSubscriptionPricing = await this.subscriptionPricingService.getActiveSubscriptionPricing();
+    if (!activeSubscriptionPricing) {
+      return res.status(500).send("No active subscription pricing");
+    }
+
     const dayOfMonth = new Date().getDate();
     const daysInMonth = new Date(
       new Date().getFullYear(),
@@ -697,16 +735,40 @@ export class AppController {
 
     if (isUserSubscribed) return res.sendStatus(204);
 
-    this.subscriptionChargeService
-      .save({
-        userId,
-        chargeStatus: "pending",
-        amount: Number(
-          Math.round(Environment.SUBSCRIPTION_MONTHLY_FEE * proRate * 100) / 100
-        ),
-        description: "signup",
-      })
-      .then(() => res.sendStatus(204));
+    try {
+      const monthlyCharges = await this.subscriptionChargeService.findMonthlySubscriptionCharges(userId);
+      if (monthlyCharges.length === 0) {
+        await this.subscriptionChargeService
+          .save({
+            userId,
+            chargeStatus: "pending",
+            amount: Number(
+              Math.round(activeSubscriptionPricing.subscriptionFee * proRate * 100) / 100
+            ),
+            description: "signup",
+          });
+      }
+      const subscriptionUpdates = await this.subscriptionUpdateService.getNonAcceptedSubscriptionUpdatesByUserId(userId);
+      if (subscriptionUpdates.length > 0) {
+        await this.subscriptionUpdateService.save({
+          ...subscriptionUpdates[0],
+          accepted: true,
+          updatedDate: new Date()
+        });
+      } else if (!subscriptionUpdates.length) {
+        await this.subscriptionUpdateService
+          .save({
+            accepted: true,
+            createdDate: new Date(),
+            updatedDate: new Date(),
+            pricingId: activeSubscriptionPricing?.id,
+            userId: userId
+          });
+      }
+      res.sendStatus(204);
+    } catch (err) {
+      res.sendStatus(500);
+    }
   }
 
   @Get("healthz")

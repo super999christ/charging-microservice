@@ -5,6 +5,7 @@ import { SubscriptionChargeService } from "../../database/subscriptionCharge/sub
 import { UserService } from "../../database/user/user.service";
 import { Cron } from "@nestjs/schedule";
 import { PinoLogger, InjectPinoLogger } from "nestjs-pino";
+import { SubscriptionPricingService } from "@root/src/database/subscriptionPricing/subscriptionPricing.service";
 
 @Injectable()
 export class CronService {
@@ -14,6 +15,8 @@ export class CronService {
   private userService: UserService;
   @Inject()
   private subscriptionChargesService: SubscriptionChargeService;
+  @Inject()
+  private subscriptionPricingService: SubscriptionPricingService;
 
   @InjectPinoLogger(CronService.name)
   private readonly logger: PinoLogger;
@@ -23,7 +26,8 @@ export class CronService {
     this.logger.info("Running subscription processing cron job...");
 
     const today = new Date();
-    if (today.getDate() === 1) {
+    const subscriptionPricing = await this.subscriptionPricingService.getActiveSubscriptionPricing(); // active subscription pricing
+    if (today.getDate() === 1 && subscriptionPricing) {
       const users = await this.userService.getSubscriptionUsers();
       for (const user of users) {
         try {
@@ -38,7 +42,7 @@ export class CronService {
             description: "monthly_fee",
             chargeStatus: "pending",
             amount:
-              Environment.SUBSCRIPTION_MONTHLY_FEE /* * user.vehicleCount*/,
+              subscriptionPricing.subscriptionFee /* * user.vehicleCount*/,
           });
         } catch (err) {
           this.logger.error(err);

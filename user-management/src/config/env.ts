@@ -24,7 +24,6 @@ const Environment = {
   CUSTOMER_PROCESSING_CRON_SCHEDULE: String(
     process.env.CUSTOMER_PROCESSING_CRON_SCHEDULE
   ),
-  SUBSCRIPTION_MONTHLY_FEE: Number(process.env["SUBSCRIPTION_MONTHLY_FEE"]),
   HASH_SALT: Number(process.env["HASH_SALT"]),
 };
 
