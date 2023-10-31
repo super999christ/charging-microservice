@@ -3,14 +3,15 @@ import {
   CreateDateColumn,
   Entity,
   UpdateDateColumn,
+  PrimaryColumn
 } from "typeorm";
 
 @Entity("tbl_Subscription_Updates")
 export class SubscriptionUpdate {
-  @Column({ name: "UserId", type: "uuid", nullable: false })
+  @PrimaryColumn({ name: "UserId", type: "uuid", nullable: false })
   userId: string;
 
-  @Column({ name: "PricingId", type: "int", nullable: false })
+  @PrimaryColumn({ name: "PricingId", type: "int", nullable: false })
   pricingId: number;
 
   @Column({ name: "Accepted", type: "bool", nullable: false })
