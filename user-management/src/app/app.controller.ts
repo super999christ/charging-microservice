@@ -675,6 +675,16 @@ export class AppController {
     }
   }
 
+  @Get("subscription-updates")
+  public async getSubscriptionUpdates(
+    @Request() req: IRequest,
+    @Response() res: IResponse
+  ) {
+    const userId = (req as any).userId;
+    const subscriptionUpdates = await this.subscriptionUpdateService.getSubscriptionupdatesbyUserId(userId);
+    res.send(subscriptionUpdates);
+  }
+
   @Get("active-subscription-pricing")
   public async getActiveSubscriptionPricing(
     @Request() req: IRequest,
@@ -734,11 +744,9 @@ export class AppController {
     const remainingDays = (daysInMonth - dayOfMonth) + 1;
     const proRate = remainingDays / daysInMonth;
 
-    if (isUserSubscribed) return res.sendStatus(204);
-
     try {
       const monthlyCharges = await this.subscriptionChargeService.findMonthlySubscriptionCharges(userId);
-      if (monthlyCharges.length === 0) {
+      if (!isUserSubscribed && monthlyCharges.length === 0) {
         await this.subscriptionChargeService
           .save({
             userId,
