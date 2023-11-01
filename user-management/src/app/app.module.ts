@@ -43,7 +43,9 @@ export class AppModule {
       .forRoutes(
         { path: "/profile", method: RequestMethod.ALL },
         { path: "/profile/password", method: RequestMethod.ALL },
-        { path: "/subscriptions", method: RequestMethod.ALL }
+        { path: "/subscriptions", method: RequestMethod.ALL },
+        { path: "/subscription-updates", method: RequestMethod.ALL },
+        { path: "/active-subscription-pricing", method: RequestMethod.ALL },
       );
   }
 }

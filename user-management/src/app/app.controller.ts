@@ -128,8 +128,11 @@ export class AppController {
           userId: user.id,
         });
         if (user.billingPlanId === 2) {
+          const decodedToken = this.jwtService.validateToken(
+            'Bearer ' + data.token
+          );
           const subscriptionUpdates = await this.subscriptionUpdateService.getNonAcceptedSubscriptionUpdatesByUserId(user.id);
-          if (subscriptionUpdates.length > 0) {
+          if (decodedToken.subscription_customer && subscriptionUpdates.length > 0) {
             data.shouldRedirectToBillingPlan = true;
           }
         }
