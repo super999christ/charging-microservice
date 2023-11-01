@@ -6,7 +6,7 @@ export class JwtService {
   @Inject(NestJsJwtService)
   private jwt: NestJsJwtService;
 
-  public generateToken(payload: Record<string, any>, expiresIn = 1800) {
+  public generateToken(payload: Record<string, any>, expiresIn = 3600) {
     return this.jwt.sign(payload, { expiresIn });
   }
 
