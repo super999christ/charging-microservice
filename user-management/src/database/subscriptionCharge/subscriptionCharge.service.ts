@@ -24,7 +24,6 @@ export class SubscriptionChargeService {
     return await this.repository.find({
       where: {
         createdDate: Between(startDate, endDate),
-        chargeStatus: "pending",
         description: 'monthly_fee',
         userId,
       },
