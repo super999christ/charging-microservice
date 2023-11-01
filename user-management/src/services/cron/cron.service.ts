@@ -36,14 +36,15 @@ export class CronService {
               user.id,
               today
             );
-          if (charges.length) continue;
-          await this.subscriptionChargesService.saveSubscriptionCharges({
-            userId: user.id,
-            description: "monthly_fee",
-            chargeStatus: "pending",
-            amount:
-              subscriptionPricing.subscriptionFee /* * user.vehicleCount*/,
-          });
+          if (charges.length === 0) {
+            await this.subscriptionChargesService.saveSubscriptionCharges({
+              userId: user.id,
+              description: "monthly_fee",
+              chargeStatus: "pending",
+              amount:
+                subscriptionPricing.subscriptionFee /* * user.vehicleCount*/,
+            });
+          }
         } catch (err) {
           this.logger.error(err);
         }
