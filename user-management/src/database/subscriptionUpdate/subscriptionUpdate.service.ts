@@ -23,6 +23,6 @@ export class SubscriptionUpdateService {
   }
 
   public async getSubscriptionupdatesbyUserId(userId: string) {
-    return await this.repository.findBy({ userId });
+    return await this.repository.findBy({ userId, pricingId: 2 });
   }
 }
