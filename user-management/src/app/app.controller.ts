@@ -132,7 +132,7 @@ export class AppController {
             'Bearer ' + data.token
           );
           const subscriptionUpdates = await this.subscriptionUpdateService.getNonAcceptedSubscriptionUpdatesByUserId(user.id);
-          if (decodedToken.subscription_customer && subscriptionUpdates.length > 0) {
+          if (decodedToken.subscription_customer && subscriptionUpdates.length > 0 && user.billingPlanId === 2) {
             data.shouldRedirectToBillingPlan = true;
           }
         }
@@ -678,14 +678,16 @@ export class AppController {
     }
   }
 
-  @Get("subscription-updates")
+  @Get("is-subscription-billing-plan-user")
   public async getSubscriptionUpdates(
     @Request() req: IRequest,
     @Response() res: IResponse
   ) {
     const userId = (req as any).userId;
-    const subscriptionUpdates = await this.subscriptionUpdateService.getSubscriptionupdatesbyUserId(userId);
-    res.send(subscriptionUpdates);
+    const user = await this.userService.getUser(userId);
+    const nonAcceptedSubscriptionUpdates = await this.subscriptionUpdateService.getNonAcceptedSubscriptionUpdatesByUserId(userId);
+    const result = user?.billingPlanId === 2 && nonAcceptedSubscriptionUpdates.length > 0;
+    res.send(result);
   }
 
   @Get("active-subscription-pricing")
