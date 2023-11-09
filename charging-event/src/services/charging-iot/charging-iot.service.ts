@@ -17,7 +17,7 @@ export class ChargingIoTService {
   private readonly logger: PinoLogger;
 
   public async checkConnectivity(body: CheckConnectivityDto) {
-    const simulatorData = await this.simulatorService.checkConnectivity(body);
+    const simulatorData = await this.simulatorService.checkConnectivity();
     if (simulatorData) {
       return { data: simulatorData };
     }
@@ -29,7 +29,7 @@ export class ChargingIoTService {
   }
 
   public async getChargingStatus(body: ChargingStatusDto) {
-    const simulatorData = await this.simulatorService.getChargingStatus(body);
+    const simulatorData = await this.simulatorService.getChargingStatus();
     if (simulatorData) {
       return { data: simulatorData };
     }
@@ -41,7 +41,7 @@ export class ChargingIoTService {
   }
 
   public async manageCharging(body: ManageChargingDto) {
-    const simulatorData = await this.simulatorService.manageCharging(body);
+    const simulatorData = await this.simulatorService.manageCharging();
     if (simulatorData) {
       return { data: simulatorData };
     }
@@ -54,7 +54,7 @@ export class ChargingIoTService {
   }
 
   public async completeCharging(body: CompleteChargingDto) {
-    const simulatorData = await this.simulatorService.completeCharging(body);
+    const simulatorData = await this.simulatorService.completeCharging();
     if (simulatorData) {
       return { data: simulatorData };
     }

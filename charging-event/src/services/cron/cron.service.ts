@@ -48,9 +48,7 @@ export class CronService {
         if (PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE) {
           totalCost = Math.min(totalCost, 1);
         }
-        const { data: user } = await this.externalService.umValidatePhone({
-          phoneNumber: event.phoneNumber,
-        });
+        const { data: user } = await this.externalService.umGetUserById(event.userId);
         const { data: auth } = await this.externalService.asRequestUserToken({
           userId: user.id,
         });
@@ -58,8 +56,6 @@ export class CronService {
           const { data: status } =
             await this.chargingIoTService.getChargingStatus({
               eventId: event.id,
-              phoneNumber: event.phoneNumber,
-              stationId: event.stationId,
             });
           event.chargeStatusPercentage = status.chargeStatusPercentage;
           event.chargeDeliveredKwh = status.chargeDeliveredKwh;

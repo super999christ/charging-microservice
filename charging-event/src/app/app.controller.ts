@@ -13,7 +13,6 @@ import { Response as IResponse, Request as IRequest } from "express";
 import { PinoLogger, InjectPinoLogger } from "nestjs-pino";
 import { ChargingEventService } from "../database/charging-event/charging-event.service";
 import { ExternalService } from "../services/external/external.service";
-import { AuthChargeSMSDto } from "./dtos/AuthChargeSMS.dto";
 import { StartChargeDto } from "./dtos/StartCharge.dto";
 import { ChargingIoTService } from "../services/charging-iot/charging-iot.service";
 import { ChargingStatusDto } from "../services/charging-iot/dtos/ChargingStatus.dto";
@@ -47,11 +46,11 @@ export class AppController {
     try {
       const { data: user } = await this.externalService.umGetProfile(req.headers.authorization!);
 
-      const chargingEvents = await this.chargingEventService.getLatestChargingEvents(user.phoneNumber);
+      const chargingEvents = await this.chargingEventService.getLatestChargingEvents(user.id);
       if (!chargingEvents || chargingEvents.length <= 0)
         return res.status(404).send({ message: "No active charging session" });
 
-      const { data: chargingStatus } = await this.chargingIoTService.getChargingStatus({ eventId: chargingEvents[0].id, phoneNumber: user.phoneNumber, stationId: chargingEvents[0].stationId });
+      const { data: chargingStatus } = await this.chargingIoTService.getChargingStatus({ eventId: chargingEvents[0].id });
       if (chargingStatus.status === 1 && chargingStatus.sessionStatus === 'charging')
         return res.send(chargingEvents[0]);
       else
@@ -82,9 +81,8 @@ export class AppController {
         return;
       }
       const chargingEvent = await this.chargingEventService.saveChargingEvent({
-        phoneNumber,
-        stationId,
-        notificationId: 0
+        userId: user.id,
+        stationId
       });
       const { data: connectivity } =
         await this.chargingIoTService.checkConnectivity({
@@ -125,67 +123,6 @@ export class AppController {
       response.status(500).send({
         message: "System Error... please try again or call 480-573-2001 for support. "
       });
-    }
-  }
-
-  @Post("auth-charge-sms")
-  @ApiOperation({ summary: "Validates AuthCode and PhoneNumber" })
-  @ApiBearerAuth()
-  public async authChargeSMS(
-    @Body() body: AuthChargeSMSDto,
-    @Response() response: IResponse
-  ) {
-    let { notificationId, phoneNumber, authCode, chargingEventId } = body;
-    try {
-      phoneNumber = convert2StandardPhoneNumber(phoneNumber);
-      const user = (
-        await this.externalService.umValidatePhone({ phoneNumber })
-      ).data;
-      const authValid = (
-        await this.externalService.nsValidateSMSAuthCode({
-          notificationId,
-          phoneNumber,
-          authCode,
-        })
-      ).data;
-      const chargingEvent = await this.chargingEventService.getChargingEvent(
-        chargingEventId
-      );
-      if (chargingEvent) {
-        chargingEvent.smsAuthValid = true;
-        const { data: connectivity } =
-          await this.chargingIoTService.checkConnectivity({
-            stationId: chargingEvent.stationId,
-            phoneNumber,
-            eventId: chargingEvent.id,
-          });
-        if (connectivity.status != 0) {
-          const { data: result } = await this.chargingIoTService.manageCharging({
-            eventId: chargingEventId,
-            eventType: 'start'
-          });
-          if (result.status != 0) {
-            response.status(200)
-              .send({ message: "AuthCode valid" });
-          } else {
-            response.status(500)
-              .send({
-                message: 'Unable to start charging. Please try again.'
-              })
-          }
-        } else {
-          response
-            .status(400)
-            .send(
-              { message: "NOTE: You must plug charger into car before pressing start." }
-            );
-        }
-      } else {
-        response.status(404).send({ message: "ChargingEvent not found" });
-      }
-    } catch (err) {
-      this.logger.error(err);
-      response.status(401).send({ message: "AuthCode is invalid" });
     }
   }
 
@@ -242,7 +179,7 @@ export class AppController {
         throw Error("ChargingEvent not found");
       }
       const user = (
-        await this.externalService.umValidatePhone({ phoneNumber: chargingEvent.phoneNumber })
+        await this.externalService.umGetUserById(chargingEvent.userId)
       ).data;
 
       status.billingPlanId = user.billingPlanId;
@@ -357,7 +294,7 @@ export class AppController {
       );
       if (chargingEvent) {
         const user = (
-          await this.externalService.umValidatePhone({ phoneNumber: chargingEvent.phoneNumber })
+          await this.externalService.umGetUserById(chargingEvent.userId)
         ).data;
         let { data: result } = await this.chargingIoTService.manageCharging(
           body
@@ -366,9 +303,7 @@ export class AppController {
           let status: any = {}, chargingData: any = {};
           try {
             status = (await this.chargingIoTService.getChargingStatus({
-              eventId: chargingEvent.id,
-              phoneNumber: chargingEvent.phoneNumber,
-              stationId: chargingEvent.stationId
+              eventId: chargingEvent.id
             })).data;
             if (chargingEvent.sessionStatus && chargingEvent.sessionStatus !== 'in_progress') {
               result.error = "";
@@ -453,9 +388,8 @@ export class AppController {
   public async getTransactions(@Request() request: IRequest, @Response() response: IResponse) {
     const headers = request.headers;
     try {
-      const { data } = await this.externalService.umGetProfile(headers.authorization as string);
-      const { phoneNumber } = data;
-      const transactions = await this.chargingEventService.getTransactions(phoneNumber);
+      const { data: user } = await this.externalService.umGetProfile(headers.authorization as string);
+      const transactions = await this.chargingEventService.getTransactions(user.id);
       response.send(transactions);
     } catch (err) {
       response.sendStatus(401);

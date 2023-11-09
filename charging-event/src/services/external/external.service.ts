@@ -10,8 +10,8 @@ import { RequestUserTokenDto } from "./dtos/RequestUserTokenDto.dto";
 
 @Injectable()
 export class ExternalService {
-  public async umValidatePhone(body: ValidatePhoneDto) {
-    return axios.post(`${Environment.SERVICE_USER_MANAGEMENT_URL}/validate-phone`, body);
+  public async umGetUserById(userId: string) {
+    return axios.get(`${Environment.SERVICE_USER_MANAGEMENT_URL}/get-user?userId=${userId}`);
   }
 
   public async umGetProfile(authorization: string) {

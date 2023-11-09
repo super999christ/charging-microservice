@@ -20,19 +20,19 @@ export class ChargingEventService {
     return this.chargingEventRepository.findOneBy({ id });
   }
 
-  public async getTransactions(phoneNumber: string) {
+  public async getTransactions(userId: string) {
     return this.chargingEventRepository.find({
-      where: { phoneNumber, chargeDeliveredKwh: Not(0) },
+      where: { userId, chargeDeliveredKwh: Not(0) },
       order: { createdDate: "DESC" },
     });
   }
 
-  public async getLatestChargingEvents(phoneNumber: string) {
+  public async getLatestChargingEvents(userId: string) {
     const fourHoursAgo = new Date(new Date().getTime() - 3600 * 1000 * 4);
     return this.chargingEventRepository.find({
       where: [
         {
-          phoneNumber,
+          userId,
           sessionStatus: In(["in_progress", "charging"]),
           updatedDate: MoreThan(fourHoursAgo),
         }
