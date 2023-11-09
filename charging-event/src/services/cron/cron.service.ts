@@ -86,7 +86,8 @@ export class CronService {
             }
           } else {
             // is subscription
-            event.sessionStatus = "ex_completed_sub";
+            if (originalSessionStatus === "in_progress")
+              event.sessionStatus = "ex_in_progress_sub";
             event.exceptionStatus = "completed";
           }
           await this.chargingEventService.saveChargingEvent(event);
