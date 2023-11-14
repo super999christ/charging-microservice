@@ -276,8 +276,10 @@ export class AppController {
           if (PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE) {
             actualCost = Math.min(actualCost, 1);
             // Promotion message for transaction plan
-            if ( chargingStatus.billingPlanId == 1)
-              chargingStatus.promotionMessage = this.getPromotionMessage();
+            if ( chargingStatus.billingPlanId == 1) {
+              chargingStatus.statusMessage = this.getPromotionMessage();
+              chargingStatus.statusType = 'success';
+            }
           }
           if (user.billingPlanId == 1) {
             const { data: paymentIntent } = await this.externalService.psCompleteCharge({
