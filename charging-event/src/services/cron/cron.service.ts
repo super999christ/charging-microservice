@@ -28,9 +28,7 @@ export class CronService {
       const originalSessionStatus = event.sessionStatus;
       try {
         const { data: chargingData } =
-          await this.chargingIoTService.completeCharging({
-            eventId: event.id,
-          });
+          await this.chargingIoTService.completeCharging(event.id);
         const timeZone = "America/Los_Angeles";
         const today = new Date().toLocaleString("sv", { timeZone });
         const PROMO1_FROM_DATE = Environment.PROMO1_FROM_DATE.toLocaleString(
@@ -54,9 +52,7 @@ export class CronService {
         });
         try {
           const { data: status } =
-            await this.chargingIoTService.getChargingStatus({
-              eventId: event.id,
-            });
+            await this.chargingIoTService.getChargingStatus(event.id);
           event.chargeStatusPercentage = status.chargeStatusPercentage;
           event.chargeDeliveredKwh = status.chargeDeliveredKwh;
           event.chargeSpeedKwh = status.chargeSpeedKwh;

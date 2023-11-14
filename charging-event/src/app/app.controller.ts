@@ -16,7 +16,6 @@ import { ExternalService } from "../services/external/external.service";
 import { StartChargeDto } from "./dtos/StartCharge.dto";
 import { ChargingIoTService } from "../services/charging-iot/charging-iot.service";
 import { ChargingStatusDto } from "../services/charging-iot/dtos/ChargingStatus.dto";
-import { ManageChargingDto } from "../services/charging-iot/dtos/ManageCharging.dto";
 import { convert2StandardPhoneNumber } from "../utils/phone.util";
 import Environment from "../config/env";
 
@@ -50,7 +49,7 @@ export class AppController {
       if (!chargingEvents || chargingEvents.length <= 0)
         return res.status(404).send({ message: "No active charging session" });
 
-      const { data: chargingStatus } = await this.chargingIoTService.getChargingStatus({ eventId: chargingEvents[0].id });
+      const { data: chargingStatus } = await this.chargingIoTService.getChargingStatus(chargingEvents[0].id);
       if (chargingStatus.status === 1 && chargingStatus.sessionStatus === 'charging')
         return res.send(chargingEvents[0]);
       else
@@ -152,29 +151,18 @@ export class AppController {
     @Request() request: IRequest,
     @Response() response: IResponse
   ) {
-    let exception = false;
+    const { eventId, isStopped } = body;
+    // Set the server side lock
+    if (transactionLock[eventId]) {
+      response.status(409).send();
+      return;
+    }
+    transactionLock[eventId] = true;
+
+    let iotException = false;
     try {
-      let status;
-      if (body.iotException) {
-        status = {
-          chargeStatusPercentage: 0,
-          chargeDeliveredKwh: 0,
-          chargeSpeedKwh: 0,
-          chargeVehicleRequestedKwh: 0,
-          rateActivekWh: 0,
-          sessionTotalDuration: 0,
-          status: 1,
-          sessionStatus: 'iot_error',
-          exceptionStatus: 'pending',
-        }
-      } else {
-        status = (await this.chargingIoTService.getChargingStatus(body)).data;
-      }
-      status.PROMO1_FROM_DATE = Environment.PROMO1_FROM_DATE;
-      status.PROMO1_TO_DATE = Environment.PROMO1_TO_DATE;
-      const chargingEvent = await this.chargingEventService.getChargingEvent(
-        body.eventId
-      );
+      // Lookup charging event and user billing plan
+      const chargingEvent = await this.chargingEventService.getChargingEvent(eventId);
       if (!chargingEvent) {
         throw Error("ChargingEvent not found");
       }
@@ -182,203 +170,154 @@ export class AppController {
         await this.externalService.umGetUserById(chargingEvent.userId)
       ).data;
 
-      status.billingPlanId = user.billingPlanId;
-
-      if (status.status != 0 && (status.chargeComplete != 0 || ["idle", "offline", "iot_error", "payment_error"].includes(status.sessionStatus))) {
-        if (chargingEvent) {
-          if (chargingEvent.sessionStatus && chargingEvent.sessionStatus !== 'in_progress') {
-            status.sessionStatus = chargingEvent.sessionStatus;
-            status.sessionTotalCost = chargingEvent.totalCostDollars;
-            response.send(status);
-            return;
-          }
-          chargingEvent.chargeStatusPercentage = status.chargeStatusPercentage;
-          chargingEvent.chargeDeliveredKwh = status.chargeDeliveredKwh;
-          chargingEvent.chargeSpeedKwh = status.chargeSpeedKwh;
-          chargingEvent.chargeVehicleRequestedKwh =
-            status.chargeVehicleRequestedKwh;
-          chargingEvent.rateActivekWh = status.rateActivekWh;
-          chargingEvent.totalChargeTime = status.sessionTotalDuration;
-          chargingEvent.sessionStatus = status.sessionStatus;
-
-          let chargingData: any = {};
-          try {
-            chargingData = (await this.chargingIoTService.completeCharging({
-              eventId: body.eventId
-            })).data;
-            if (chargingData.status == 0) {
-              exception = true;
-              throw Error("Error: bad JSON status from CompleteCharge");
-            }
-          } catch (error) {
-            this.logger.error("IOT CompleteCharge error: ", error);
-            chargingEvent.sessionStatus = status.sessionStatus = 'iot_error';
-            chargingEvent.exceptionStatus = status.exceptionStatus = 'pending';
-            transactionLock[chargingEvent.id] = false;
-            await this.chargingEventService.saveChargingEvent(chargingEvent);
-            response.send(status);
-            return;
-          }
-          chargingEvent.totalCostDollars = Number(chargingData.sessionTotalCost) && Math.max(chargingData.sessionTotalCost, 0.5);
-          if (status.chargeComplete != 0)
-            chargingEvent.sessionStatus = "completed";
-          else
-            chargingEvent.sessionStatus = status.sessionStatus;
-          await this.chargingEventService.saveChargingEvent(chargingEvent);
-
-          try {
-            if (!chargingEvent.paymentIntentId && chargingEvent.totalCostDollars && !transactionLock[chargingEvent.id]) {
-              const timeZone = 'America/Los_Angeles';
-              const today = new Date().toLocaleString('sv', { timeZone });
-              const PROMO1_FROM_DATE = Environment.PROMO1_FROM_DATE.toLocaleString('sv', { timeZone });
-              const PROMO1_TO_DATE = Environment.PROMO1_TO_DATE.toLocaleString('sv', { timeZone });
-
-              let actualCost = chargingEvent.totalCostDollars;
-              this.logger.info(`Is charging event time '${today}' within promotion time range '${PROMO1_FROM_DATE}' to '${PROMO1_TO_DATE}': ${PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE}`);
-              if (PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE) {
-                actualCost = Math.min(actualCost, 1);
-                status.promoted = true;
-              }
-              transactionLock[chargingEvent.id] = true;
-              if (user.billingPlanId != 2) {   // <> not subscription
-                const { data: paymentIntent } = await this.externalService.psCompleteCharge({
-                  amount: actualCost,
-                  idempotencyKey: `transaction_charge_${chargingEvent.id}`
-                }, request.headers.authorization as string);
-                chargingEvent.paymentIntentId = paymentIntent.id;
-              } else { // is transaction
-                if (chargingEvent.sessionStatus === "completed")
-                  chargingEvent.sessionStatus = "completed_sub";
-              }
-              await this.chargingEventService.saveChargingEvent(chargingEvent);
-            }
-          } catch (err) {
-            this.logger.error(err, "Payment Error");
-            chargingEvent.sessionStatus = status.sessionStatus = 'payment_error';
-            chargingEvent.exceptionStatus = status.exceptionStatus = 'pending';
-            transactionLock[chargingEvent.id] = false;
-            await this.chargingEventService.saveChargingEvent(chargingEvent);
-            response.send(status);
-            return;
-          }
-        } else {
-          exception = true;
-          throw Error("ChargingEvent not found");
-        }
-      } else if (status.status == 0) {
-        exception = true;
-        throw Error("Error: bad JSON status from GetChargingStatus");
+      let chargingStatus = (await this.chargingIoTService.getChargingStatus(eventId)).data;
+      if (chargingEvent.sessionStatus && chargingEvent.sessionStatus !== 'charging') {
+        chargingStatus.sessionStatus = chargingEvent.sessionStatus;
       }
+      if (isStopped) {
+        let result;
+        try {
+          result = (await this.chargingIoTService.manageCharging({
+            eventId,
+            eventType: 'stop'
+          })).data;
+        } catch (error) {
+          iotException = true;
+          throw Error("Charging stop failure");
+        }
+        try {
+          if (result.status == 1) {
+            const chargingComplete = (await this.chargingIoTService.completeCharging(eventId)).data;
+            chargingStatus = {
+              ...chargingStatus,
+              ...chargingComplete
+            }
+          } else {
+            iotException = true;
+            throw Error("Charging stop failure");  
+          }
+        } catch (error) {
+          this.logger.error("IOT Complete Charge error: ", error);
+          // set customer messaging to success as offline process will handle
+          chargingStatus.statusType = "success";
+          chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
+
+          chargingEvent.sessionStatus = chargingStatus.sessionStatus = "iot_complete_error";
+          chargingEvent.exceptionStatus = chargingStatus.exceptionStatus = "pending";
+
+          await this.chargingEventService.saveChargingEvent(chargingEvent);
+          transactionLock[chargingEvent.id] = false;
+          response.send(chargingStatus);
+          return;
+        }
+      }
+
+      if (chargingStatus.status == 0) {
+        iotException = true;
+        throw Error("IOT Error: Get Charging Status failed");
+      }
+
+      // InProgress status and return latest charge status
+      if (chargingStatus.sessionStatus === 'charging' && !isStopped && chargingStatus.chargeComplete == 0) {
+        transactionLock[eventId] = false;
+        response.send(chargingStatus);
+        return;
+      }
+
+      // Check for zero dollar session and update DB and return
+      if (!chargingStatus.sessionTotalCost) {
+        chargingStatus.statusType = "info";
+        chargingStatus.statusMessage = this.getNoPowerMessage();
+        chargingEvent.sessionStatus = chargingStatus.sessionStatus = "zero_session";
+        await this.chargingEventService.saveChargingEvent(chargingEvent);
+
+        transactionLock[eventId] = false;
+        response.send(chargingStatus);
+        return;
+      }
+
+      if (isStopped) {
+        chargingStatus.statusType = "success";
+        chargingStatus.statusMessage = this.getSuccessStopMessage(user.billingPlanId);
+        chargingStatus.sessionStatus = 'stopped';
+      } else if (chargingStatus.chargeComplete == 1) {
+        chargingStatus.statusType = "success";
+        chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
+        chargingStatus.sessionStatus = "completed";
+      } else if (chargingStatus.sessionStatus === 'idle') {
+        chargingStatus.statusType = "success";
+        chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
+        chargingStatus.sessionStatus = "idle";
+      } else if (!['in_progress', "stopped", 'completed'].includes(chargingStatus.sessionStatus)) {
+        // all other statuses – treat as IOT App Error
+        // "available", "trickle", "charging", "offline", “lost-network” 
+        chargingStatus.statusType = "error";
+        chargingStatus.statusMessage = this.getIOTErorMessage(user.billingPlanId);
+      }
+
+      chargingEvent.chargeStatusPercentage = chargingStatus.chargeStatusPercentage;
+      chargingEvent.chargeDeliveredKwh = chargingStatus.chargeDeliveredKwh;
+      chargingEvent.chargeSpeedKwh = chargingStatus.chargeSpeedKwh;
+      chargingEvent.chargeVehicleRequestedKwh = chargingStatus.chargeVehicleRequestedKwh;
+      chargingEvent.rateActivekWh = chargingStatus.rateActivekWh;
+      chargingEvent.totalChargeTime = chargingStatus.sessionTotalDuration;
+      chargingEvent.sessionStatus = chargingStatus.sessionStatus;
+
+      chargingEvent.totalCostDollars = Number(chargingStatus.sessionTotalCost) && Math.max(chargingStatus.sessionTotalCost, 0.5);
+      try {
+        if (!chargingEvent.paymentIntentId && chargingEvent.totalCostDollars) {
+          const timeZone = 'America/Los_Angeles';
+          const today = new Date().toLocaleString('sv', { timeZone });
+          const PROMO1_FROM_DATE = Environment.PROMO1_FROM_DATE.toLocaleString('sv', { timeZone });
+          const PROMO1_TO_DATE = Environment.PROMO1_TO_DATE.toLocaleString('sv', { timeZone });
+          
+          let actualCost = chargingEvent.totalCostDollars;
+          this.logger.info(`Is charging event time '${today}' within promotion time range '${PROMO1_FROM_DATE}' to '${PROMO1_TO_DATE}': ${PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE}`);
+          if (PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE) {
+            actualCost = Math.min(actualCost, 1);
+            // Promotion message for transaction plan
+            if ( chargingStatus.billingPlanId == 1)
+              chargingStatus.promotionMessage = this.getPromotionMessage();
+          }
+          if (user.billingPlanId == 1) {
+            const { data: paymentIntent } = await this.externalService.psCompleteCharge({
+              amount: actualCost,
+              idempotencyKey: `transaction_charge_${chargingEvent.id}`
+            }, request.headers.authorization as string);
+            chargingEvent.paymentIntentId = paymentIntent.id;
+          }
+        }
+      } catch (error) {
+        this.logger.error("Payment error: ", error);
+        
+        // set customer messaging to success as offline process will handle
+        chargingStatus.statusType = "success";
+        chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
+
+        chargingEvent.sessionStatus = 'payment_error';
+        chargingEvent.exceptionStatus = 'pending';
+
+        await this.chargingEventService.saveChargingEvent(chargingEvent);
+        transactionLock[eventId] = false;
+        response.send(chargingStatus);
+        return;
+      }
+
+      // Update the DB – tbl_charging_events
+      await this.chargingEventService.saveChargingEvent(chargingEvent);
+
+      // Release the server side lock
+      transactionLock[eventId] = false;
+      console.log({chargingEvent});
       if (chargingEvent.sessionStatus && chargingEvent.sessionStatus !== 'in_progress') {
-        status.sessionStatus = chargingEvent.sessionStatus;
-        status.sessionTotalCost = chargingEvent.totalCostDollars;
+        chargingStatus.sessionStatus = chargingEvent.sessionStatus;
+        chargingStatus.sessionTotalCost = chargingEvent.totalCostDollars;
       }
-      response.send(status);
-    } catch (err: any) {
-      this.logger.error(err);
-      response.status(500).send({ message: exception ? "System Error..please try again or call 480-573-2001 for support." : 'ChargingIoT exception occurred' });
-    }
-  }
-
-  @Post("manage-charging")
-  @ApiOperation({ summary: "Manage charging (start, pause, resume, stop)" })
-  @ApiBearerAuth()
-  public async manageCharging(
-    @Body() body: ManageChargingDto,
-    @Request() request: IRequest,
-    @Response() response: IResponse
-  ) {
-    try {
-      const chargingEvent = await this.chargingEventService.getChargingEvent(
-        body.eventId
-      );
-      if (chargingEvent) {
-        const user = (
-          await this.externalService.umGetUserById(chargingEvent.userId)
-        ).data;
-        let { data: result } = await this.chargingIoTService.manageCharging(
-          body
-        );
-        if (result.status == 1 && body.eventType === 'stop') {
-          let status: any = {}, chargingData: any = {};
-          try {
-            status = (await this.chargingIoTService.getChargingStatus({
-              eventId: chargingEvent.id
-            })).data;
-            if (chargingEvent.sessionStatus && chargingEvent.sessionStatus !== 'in_progress') {
-              result.error = "";
-              response.send(result);
-              return;
-            }
-            chargingData = (await this.chargingIoTService.completeCharging({
-              eventId: body.eventId
-            })).data;
-          } catch (error) {
-            this.logger.error(error);
-            transactionLock[chargingEvent.id] = false;
-            chargingEvent.sessionStatus = 'iot_error';
-            chargingEvent.exceptionStatus = 'pending';
-            await this.chargingEventService.saveChargingEvent(chargingEvent);
-            result = {
-              ...result,
-              ...chargingEvent
-            };
-            response.send(result);
-            return;
-          }
-          try {
-            chargingEvent.totalCostDollars = Number(chargingData.sessionTotalCost) && Math.max(chargingData.sessionTotalCost, 0.5);
-            if (!chargingEvent.paymentIntentId && chargingEvent.totalCostDollars && !transactionLock[chargingEvent.id]) {
-              const timeZone = 'America/Los_Angeles';
-              const today = new Date().toLocaleString('sv', { timeZone });
-              const PROMO1_FROM_DATE = Environment.PROMO1_FROM_DATE.toLocaleString('sv', { timeZone });
-              const PROMO1_TO_DATE = Environment.PROMO1_TO_DATE.toLocaleString('sv', { timeZone });
-
-              let actualCost = chargingEvent.totalCostDollars;
-              this.logger.info(`Is charging event time '${today}' within promotion time range '${PROMO1_FROM_DATE}' to '${PROMO1_TO_DATE}': ${PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE}`);
-              if (PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE) {
-                actualCost = Math.min(actualCost, 1);
-                result.promoted = true;
-              }
-              transactionLock[chargingEvent.id] = true;
-              if (user.billingPlanId != 2) {    // <> not subscription
-                const { data: paymentIntent } = await this.externalService.psCompleteCharge({
-                  amount: actualCost,
-                  idempotencyKey: `transaction_charge_${chargingEvent.id}`
-                }, request.headers.authorization as string);
-                chargingEvent.paymentIntentId = paymentIntent.id;
-                chargingEvent.sessionStatus = "stopped";
-              } else {    // is transaction
-                chargingEvent.sessionStatus = "stopped_sub";
-              }
-            }
-          } catch (err) {
-            this.logger.error(err);
-            transactionLock[chargingEvent.id] = false;
-            chargingEvent.sessionStatus = 'payment_error';
-            chargingEvent.exceptionStatus = 'pending';
-            result.error = 'Payment failed';
-          }
-          chargingEvent.chargeStatusPercentage = status.chargeStatusPercentage;
-          chargingEvent.chargeDeliveredKwh = status.chargeDeliveredKwh;
-          chargingEvent.chargeSpeedKwh = status.chargeSpeedKwh;
-          chargingEvent.chargeVehicleRequestedKwh =
-            status.chargeVehicleRequestedKwh;
-          chargingEvent.rateActivekWh = status.rateActivekWh;
-          chargingEvent.totalChargeTime = status.sessionTotalDuration;
-          await this.chargingEventService.saveChargingEvent(chargingEvent);
-        }
-        result = {
-          ...result,
-          ...chargingEvent
-        };
-        response.send(result);
-      } else {
-        throw Error("ChargingEvent not found");
-      }
-    } catch (err) {
-      this.logger.error(err);
-      response.status(400).send(err);
+      response.send(chargingStatus);
+    } catch (error) {
+      this.logger.error(error);
+      transactionLock[eventId] = false;
+      response.status(500).send({ message: iotException ? "System Error..please try again or call 480-573-2001 for support." : 'ChargingIoT exception occurred' });
     }
   }
 
@@ -399,5 +338,38 @@ export class AppController {
   @Get("healthz")
   public async healthz(@Response() res: IResponse) {
     return res.sendStatus(200);
+  }
+
+  getSuccessCompleteMessage(billingPlanId: number) {
+    if (billingPlanId === 2) { // subscription plan
+      return "Successfully completed charging. You are on the Subscription billing plan, transaction will not be charged to the credit card on file."; 
+    }
+    return "Successfully completed charging. Transaction will be charged to the credit card on file. Please remove the charge handle from the vehicle.";
+  }
+
+  getSuccessStopMessage(billingPlanId: number) {
+    if (billingPlanId === 2) { // subscription plan
+      return "Successfully stopped charging. You are on the Subscription billing plan, transaction will not be charged to the credit card on file.";
+    }
+    return "Successfully stopped charging. Transaction will be charged to the credit card on file. Please remove charge handle from the vehicle.";
+  }
+
+  getIOTErorMessage(billingPlanId: number) {
+    if (billingPlanId === 2) { // subscription plan
+      return "An error occurred before completing charge. You are on the Subscription billing plan, transaction will not be charged to the credit card on file. Please remove charge handle from the vehicle and retry charging.";
+    }
+    return "An error occurred before completing charge. Partial charging transaction will be charged to credit card on file. Please remove charge handle from the vehicle and retry charging.";
+  }
+
+  getNoPowerMessage()  {
+    return "Vehicle is not requesting any power. Please remove charge handle from the vehicle and retry charging.";
+  }
+
+  getChargeStatusSystemErrorMessage() {
+    return "System Error..please try again or call 480-573-2001 for support.";
+  }
+
+  getPromotionMessage(){
+    return "Product Launch promotion: $1 per charging session. Only $1 will be charged to your credit card.";
   }
 }

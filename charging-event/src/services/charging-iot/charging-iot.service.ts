@@ -1,12 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { CheckConnectivityDto } from "./dtos/CheckConnectivity.dto";
-import { ChargingStatusDto } from "./dtos/ChargingStatus.dto";
 import { ManageChargingDto } from "./dtos/ManageCharging.dto";
 import axios, { AxiosResponse } from "axios";
 import Environment from "../../config/env";
 import { SimulatorService } from "../simulator/simulator.service";
-import { CompleteChargingDto } from "./dtos/CompleteCharging.dto";
 import { PinoLogger, InjectPinoLogger } from "nestjs-pino";
+import axiosRetry from 'axios-retry';
 
 @Injectable()
 export class ChargingIoTService {
@@ -28,14 +27,14 @@ export class ChargingIoTService {
       .then((res) => this.handleIotResponse(res));
   }
 
-  public async getChargingStatus(body: ChargingStatusDto) {
+  public async getChargingStatus(eventId: number) {
     const simulatorData = await this.simulatorService.getChargingStatus();
     if (simulatorData) {
       return { data: simulatorData };
     }
     return axios
       .get(
-        `${Environment.SERVICE_CHARGING_IOT_URL}/get-charging-status?eventId=${body.eventId}`
+        `${Environment.SERVICE_CHARGING_IOT_URL}/get-charging-status?eventId=${eventId}`
       )
       .then((res) => this.handleIotResponse(res));
   }
@@ -53,14 +52,22 @@ export class ChargingIoTService {
       .catch((err) => this.handleIoTError(err));
   }
 
-  public async completeCharging(body: CompleteChargingDto) {
+  public async completeCharging(eventId: number) {
     const simulatorData = await this.simulatorService.completeCharging();
+    console.log({simulatorData});
     if (simulatorData) {
       return { data: simulatorData };
     }
+    const IOT_RETRY_COUNT = Environment.IOT_RETRY_COUNT;
+    const IOT_RETRY_DELAY = Environment.IOT_RETRY_DELAY;
+
+    axiosRetry(axios, {
+      retries: IOT_RETRY_COUNT,
+      retryDelay: (retryCount: number) => IOT_RETRY_DELAY
+    });
     return axios
       .get(
-        `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${body.eventId}`
+        `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${eventId}`
       )
       .then((res) => this.handleIotResponse(res))
       .catch((err) => this.handleIoTError(err));

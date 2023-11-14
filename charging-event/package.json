@@ -20,6 +20,7 @@
     "@nestjs/swagger": "^6.3.0",
     "@nestjs/typeorm": "^9.0.1",
     "axios": "^1.4.0",
+    "axios-retry": "^3.8.1",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.0.3",
     "nestjs-pino": "^3.5.0",
