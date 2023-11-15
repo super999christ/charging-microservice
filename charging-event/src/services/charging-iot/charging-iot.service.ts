@@ -39,7 +39,7 @@ export class ChargingIoTService {
       .then((res) => this.handleIotResponse(res));
   }
 
-  public async manageCharging(body: ManageChargingDto) {
+  public async manageCharging(body: ManageChargingDto): Promise<any> {
     const simulatorData = await this.simulatorService.manageCharging();
     if (simulatorData) {
       return { data: simulatorData };
@@ -54,23 +54,44 @@ export class ChargingIoTService {
 
   public async completeCharging(eventId: number) {
     const simulatorData = await this.simulatorService.completeCharging();
-    console.log({simulatorData});
     if (simulatorData) {
       return { data: simulatorData };
     }
     const IOT_RETRY_COUNT = Environment.IOT_RETRY_COUNT;
     const IOT_RETRY_DELAY = Environment.IOT_RETRY_DELAY;
 
-    axiosRetry(axios, {
-      retries: IOT_RETRY_COUNT,
-      retryDelay: (retryCount: number) => IOT_RETRY_DELAY
-    });
-    return axios
-      .get(
-        `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${eventId}`
-      )
-      .then((res) => this.handleIotResponse(res))
-      .catch((err) => this.handleIoTError(err));
+    let retryCount: number = 0;
+    let retryFlag: boolean = false;
+    let res = { data: { status: 0 } };
+
+    while (retryCount < IOT_RETRY_COUNT) {
+      try {
+        const res = await axios
+          .get(
+            `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${eventId}`
+          );
+        this.handleIotResponse(res);
+        retryFlag = false;
+      } catch (err) {
+        this.handleIoTError(err);
+        retryFlag = true;
+      }
+      if (retryFlag) {
+        retryCount++;
+        const clockWaitPromise = new Promise(resolve => {
+          setTimeout(() => {
+            resolve(0);
+          }, IOT_RETRY_DELAY);
+        });
+        await clockWaitPromise;
+      } else {
+        break;
+      }
+    }
+    if (retryFlag) {
+      throw Error("IOT CompleteCharge failed");
+    }
+    return res
   }
 
   public handleIotResponse(res: AxiosResponse<any, any>) {
@@ -89,11 +110,7 @@ export class ChargingIoTService {
     return res;
   }
 
-  public handleIoTError(err: any): never {
-    this.logger.error(err);
-
-    throw Error(
-      "Sorry, we're running into some issues. Please try again after sometime."
-    );
+  public handleIoTError(err: any) {
+    this.logger.error("IOT service error: ", err);
   }
 }
