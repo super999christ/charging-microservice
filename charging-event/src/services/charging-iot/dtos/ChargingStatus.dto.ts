@@ -5,11 +5,5 @@ export class ChargingStatusDto {
   eventId: number;
 
   @ApiProperty()
-  phoneNumber: string;
-
-  @ApiProperty()
-  stationId: number;
-
-  @ApiProperty()
-  iotException?: boolean;
+  isStopped?: boolean;
 };

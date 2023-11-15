@@ -28,9 +28,7 @@ export class CronService {
       const originalSessionStatus = event.sessionStatus;
       try {
         const { data: chargingData } =
-          await this.chargingIoTService.completeCharging({
-            eventId: event.id,
-          });
+          await this.chargingIoTService.completeCharging(event.id);
         const timeZone = "America/Los_Angeles";
         const today = new Date().toLocaleString("sv", { timeZone });
         const PROMO1_FROM_DATE = Environment.PROMO1_FROM_DATE.toLocaleString(
@@ -48,19 +46,13 @@ export class CronService {
         if (PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE) {
           totalCost = Math.min(totalCost, 1);
         }
-        const { data: user } = await this.externalService.umValidatePhone({
-          phoneNumber: event.phoneNumber,
-        });
+        const { data: user } = await this.externalService.umGetUserById(event.userId);
         const { data: auth } = await this.externalService.asRequestUserToken({
           userId: user.id,
         });
         try {
           const { data: status } =
-            await this.chargingIoTService.getChargingStatus({
-              eventId: event.id,
-              phoneNumber: event.phoneNumber,
-              stationId: event.stationId,
-            });
+            await this.chargingIoTService.getChargingStatus(event.id);
           event.chargeStatusPercentage = status.chargeStatusPercentage;
           event.chargeDeliveredKwh = status.chargeDeliveredKwh;
           event.chargeSpeedKwh = status.chargeSpeedKwh;

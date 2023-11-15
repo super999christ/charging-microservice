@@ -1,12 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { CheckConnectivityDto } from "./dtos/CheckConnectivity.dto";
-import { ChargingStatusDto } from "./dtos/ChargingStatus.dto";
 import { ManageChargingDto } from "./dtos/ManageCharging.dto";
 import axios, { AxiosResponse } from "axios";
 import Environment from "../../config/env";
 import { SimulatorService } from "../simulator/simulator.service";
-import { CompleteChargingDto } from "./dtos/CompleteCharging.dto";
 import { PinoLogger, InjectPinoLogger } from "nestjs-pino";
+import axiosRetry from 'axios-retry';
 
 @Injectable()
 export class ChargingIoTService {
@@ -17,7 +16,7 @@ export class ChargingIoTService {
   private readonly logger: PinoLogger;
 
   public async checkConnectivity(body: CheckConnectivityDto) {
-    const simulatorData = await this.simulatorService.checkConnectivity(body);
+    const simulatorData = await this.simulatorService.checkConnectivity();
     if (simulatorData) {
       return { data: simulatorData };
     }
@@ -28,20 +27,20 @@ export class ChargingIoTService {
       .then((res) => this.handleIotResponse(res));
   }
 
-  public async getChargingStatus(body: ChargingStatusDto) {
-    const simulatorData = await this.simulatorService.getChargingStatus(body);
+  public async getChargingStatus(eventId: number) {
+    const simulatorData = await this.simulatorService.getChargingStatus();
     if (simulatorData) {
       return { data: simulatorData };
     }
     return axios
       .get(
-        `${Environment.SERVICE_CHARGING_IOT_URL}/get-charging-status?eventId=${body.eventId}`
+        `${Environment.SERVICE_CHARGING_IOT_URL}/get-charging-status?eventId=${eventId}`
       )
       .then((res) => this.handleIotResponse(res));
   }
 
-  public async manageCharging(body: ManageChargingDto) {
-    const simulatorData = await this.simulatorService.manageCharging(body);
+  public async manageCharging(body: ManageChargingDto): Promise<any> {
+    const simulatorData = await this.simulatorService.manageCharging();
     if (simulatorData) {
       return { data: simulatorData };
     }
@@ -53,17 +52,46 @@ export class ChargingIoTService {
       .catch((err) => this.handleIoTError(err));
   }
 
-  public async completeCharging(body: CompleteChargingDto) {
-    const simulatorData = await this.simulatorService.completeCharging(body);
+  public async completeCharging(eventId: number) {
+    const simulatorData = await this.simulatorService.completeCharging();
     if (simulatorData) {
       return { data: simulatorData };
     }
-    return axios
-      .get(
-        `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${body.eventId}`
-      )
-      .then((res) => this.handleIotResponse(res))
-      .catch((err) => this.handleIoTError(err));
+    const IOT_RETRY_COUNT = Environment.IOT_RETRY_COUNT;
+    const IOT_RETRY_DELAY = Environment.IOT_RETRY_DELAY;
+
+    let retryCount: number = 0;
+    let retryFlag: boolean = false;
+    let res = { data: { status: 0 } };
+
+    while (retryCount < IOT_RETRY_COUNT) {
+      try {
+        const res = await axios
+          .get(
+            `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${eventId}`
+          );
+        this.handleIotResponse(res);
+        retryFlag = false;
+      } catch (err) {
+        this.logger.error("IOT service error: ", err);
+        retryFlag = true;
+      }
+      if (retryFlag) {
+        retryCount++;
+        const clockWaitPromise = new Promise(resolve => {
+          setTimeout(() => {
+            resolve(0);
+          }, IOT_RETRY_DELAY);
+        });
+        await clockWaitPromise;
+      } else {
+        break;
+      }
+    }
+    if (retryFlag) {
+      throw Error("IOT CompleteCharge failed");
+    }
+    return res
   }
 
   public handleIotResponse(res: AxiosResponse<any, any>) {
@@ -80,13 +108,5 @@ export class ChargingIoTService {
       this.logger.error("IOT service returned bad data %o", data);
 
     return res;
-  }
-
-  public handleIoTError(err: any): never {
-    this.logger.error(err);
-
-    throw Error(
-      "Sorry, we're running into some issues. Please try again after sometime."
-    );
   }
 }

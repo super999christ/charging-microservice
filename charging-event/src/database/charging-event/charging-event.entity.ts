@@ -2,32 +2,14 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateCol
 
 @Entity('tbl_Charging_Events')
 export class ChargingEvent {
-  @PrimaryGeneratedColumn({ name: 'ChargingEventId', type: 'bigint' })
+  @PrimaryGeneratedColumn({ name: 'EventId', type: 'bigint' })
   id: number;
 
-  @Column({ name: 'PhoneNumber', type: 'varchar' })
-  phoneNumber: string;
+  @Column({ name: 'UserId', type: 'varchar' })
+  userId: string;
 
   @Column({ name: 'StationId', type: 'integer' })
   stationId: number;
-
-  @Column({ name: 'NotificationId', type: 'integer', nullable: true })
-  notificationId: number;
-
-  @Column({ name: 'StationOnline', type: 'bool', default: false })
-  stationOnline: boolean;
-
-  @Column({ name: 'StationError', type: 'varchar', nullable: true })
-  stationError: string;
-
-  @Column({ name: 'CCAuth', type: 'bool', default: false })
-  ccAuth: boolean;
-
-  @Column({ name: 'CCCharge', type: 'bool', default: false })
-  ccCharge: boolean;
-
-  @Column({ name: 'CCAmount', type: 'float', default: 0 })
-  ccAmount: number;
 
   @Column({ name: 'ChargeStatusPercentage', type: 'float', default: 0 })
   chargeStatusPercentage: number;
@@ -59,8 +41,8 @@ export class ChargingEvent {
   @Column({ name: 'PaymentIntentId', type: 'varchar', nullable: true })
   paymentIntentId: string;
 
-  @Column({ name: 'SMSAuthValid', type: 'bool', default: false })
-  smsAuthValid: boolean;
+  @Column({ name: 'StationLocation', type: 'varchar', nullable: true })
+  stationLocation: string;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'CreatedDate' })
   createdDate: Date;

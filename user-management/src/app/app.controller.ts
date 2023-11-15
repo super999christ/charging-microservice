@@ -437,17 +437,15 @@ export class AppController {
     }
   }
 
-  @Post("validate-phone")
-  @ApiOperation({ summary: "Validates phone number within the DB" })
+  @Get("get-user")
+  @ApiOperation({ summary: "Gets user information by userId" })
   @ApiBearerAuth()
-  public async validatePhoneNumber(
-    @Body() body: ValidatePhoneDto,
+  public async getUserById(
+    @Query("userId") userId: string,
     @Response() res: IResponse
   ) {
-    let { phoneNumber } = body;
-    phoneNumber = convert2StandardPhoneNumber(phoneNumber);
     try {
-      const user = await this.userService.getUserByPhone(phoneNumber);
+      const user = await this.userService.getUser(userId);
       if (!user) {
         res.sendStatus(404);
         return;

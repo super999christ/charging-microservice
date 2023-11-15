@@ -1,16 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CheckConnectivityDto } from '../charging-iot/dtos/CheckConnectivity.dto';
-import { ChargingStatusDto } from '../charging-iot/dtos/ChargingStatus.dto';
-import { ManageChargingDto } from '../charging-iot/dtos/ManageCharging.dto';
 import { ChargingEventTestConfigService } from '../../database/charging-event-test-config/charging-event-test-config.service';
-import { CompleteChargingDto } from '../charging-iot/dtos/CompleteCharging.dto';
 
 @Injectable()
 export class SimulatorService {
   @Inject()
   private chargingEventTestConfigService: ChargingEventTestConfigService;
 
-  public async checkConnectivity(body: CheckConnectivityDto) {
+  public async checkConnectivity() {
     const config: any = await this.chargingEventTestConfigService.getTestData('CheckConnectivity');
     if (!config.testMode) {
       return null;
@@ -23,7 +19,7 @@ export class SimulatorService {
     };
   }
 
-  public async getChargingStatus(body: ChargingStatusDto) {
+  public async getChargingStatus() {
     const config: any = await this.chargingEventTestConfigService.getTestData('GetChargingStatus');
     if (!config.testMode) {
       return null;
@@ -46,7 +42,7 @@ export class SimulatorService {
     }
   }
 
-  public async manageCharging(body: ManageChargingDto) {
+  public async manageCharging() {
     const config: any = await this.chargingEventTestConfigService.getTestData('ManageCharging');
     if (!config.testMode) {
       return null;
@@ -60,7 +56,7 @@ export class SimulatorService {
     }
   }
 
-  public async completeCharging(body: CompleteChargingDto) {
+  public async completeCharging() {
     const config: any = await this.chargingEventTestConfigService.getTestData('CompleteCharging');
     if (!config.testMode) {
       return null;
