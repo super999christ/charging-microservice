@@ -152,28 +152,33 @@ export class AppController {
     @Response() response: IResponse
   ) {
     const { eventId, isStopped } = body;
+    let chargingStatus: any = {
+      statusType: 'none',
+      statusMessage: 'none'
+    };
     // Set the server side lock
     if (transactionLock[eventId]) {
-      response.status(409).send();
+      this.logger.info("Transaction lock busy for event: ", eventId);
+      response.send(chargingStatus);
       return;
     }
     transactionLock[eventId] = true;
 
     let iotException = false;
+    let chargingEvent;
     try {
       // Lookup charging event and user billing plan
-      const chargingEvent = await this.chargingEventService.getChargingEvent(eventId);
+      chargingEvent = await this.chargingEventService.getChargingEvent(eventId);
       if (!chargingEvent) {
         throw Error("ChargingEvent not found");
       }
       const user = (
         await this.externalService.umGetUserById(chargingEvent.userId)
       ).data;
-
-      let chargingStatus = (await this.chargingIoTService.getChargingStatus(eventId)).data;
-      if (chargingEvent.sessionStatus && chargingEvent.sessionStatus !== 'charging') {
-        chargingStatus.sessionStatus = chargingEvent.sessionStatus;
+      if (!user) {
+        throw Error("ChargingEvent User not found");
       }
+
       if (isStopped) {
         let result;
         try {
@@ -181,40 +186,39 @@ export class AppController {
             eventId,
             eventType: 'stop'
           })).data;
-        } catch (error) {
-          iotException = true;
-          throw Error("Charging stop failure");
-        }
-        try {
-          if (result.status == 1) {
-            const chargingComplete = (await this.chargingIoTService.completeCharging(eventId)).data;
-            chargingStatus = {
-              ...chargingStatus,
-              ...chargingComplete
-            }
-          } else {
-            iotException = true;
-            throw Error("Charging stop failure");  
+          if (result.status == 0) {
+            throw Error("IOT StopCharging failed with status=0");
           }
         } catch (error) {
-          this.logger.error("IOT Complete Charge error: ", error);
-          // set customer messaging to success as offline process will handle
-          chargingStatus.statusType = "success";
-          chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
-
-          chargingEvent.sessionStatus = chargingStatus.sessionStatus = "iot_complete_error";
-          chargingEvent.exceptionStatus = chargingStatus.exceptionStatus = "pending";
-
+          iotException = true;
+          this.logger.error("Stop IOT error: ", error);
+          // return an App error to the frontend and set for offline processing
+          chargingStatus.statusType = "error";
+          chargingStatus.statusType = this.getChargeStatusSystemErrorMessage();
+          chargingEvent.sessionStatus = "stop_iot_error";
+          chargingEvent.exceptionStatus = "pending";
+          await this.chargingEventService.saveChargingEvent(chargingEvent);
+          transactionLock[eventId] = false;
+          response.send(chargingStatus);
+          return;
+        }
+        try {
+          chargingStatus = (await this.chargingIoTService.getChargingStatus(eventId)).data;
+          if (chargingStatus.status == 0) {
+            throw Error("IOT ChargingStatus failed with status=0");
+          }
+        } catch (error) {
+          this.logger.error("IOT Error: Get Charging Status failed ", error);
+          // return an App error to the frontend and set for offline processing
+          chargingStatus.statusType = "error";
+          chargingStatus.statusMessage = this.getChargeStatusSystemErrorMessage();
+          chargingEvent.sessionStatus = "status_iot_error";
+          chargingEvent.exceptionStatus = "pending";
           await this.chargingEventService.saveChargingEvent(chargingEvent);
           transactionLock[chargingEvent.id] = false;
           response.send(chargingStatus);
           return;
         }
-      }
-
-      if (chargingStatus.status == 0) {
-        iotException = true;
-        throw Error("IOT Error: Get Charging Status failed");
       }
 
       // InProgress status and return latest charge status
@@ -239,31 +243,51 @@ export class AppController {
       if (isStopped) {
         chargingStatus.statusType = "success";
         chargingStatus.statusMessage = this.getSuccessStopMessage(user.billingPlanId);
-        chargingStatus.sessionStatus = 'stopped';
+        chargingEvent.sessionStatus = 'stopped';
       } else if (chargingStatus.chargeComplete == 1) {
         chargingStatus.statusType = "success";
         chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
-        chargingStatus.sessionStatus = "completed";
+        chargingEvent.sessionStatus = "completed";
       } else if (chargingStatus.sessionStatus === 'idle') {
         chargingStatus.statusType = "success";
         chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
-        chargingStatus.sessionStatus = "idle";
-      } else if (!['in_progress', "stopped", 'completed'].includes(chargingStatus.sessionStatus)) {
+        chargingEvent.sessionStatus = "idle";
+      } else {
         // all other statuses – treat as IOT App Error
         // "available", "trickle", "charging", "offline", “lost-network” 
         chargingStatus.statusType = "error";
         chargingStatus.statusMessage = this.getIOTErorMessage(user.billingPlanId);
+        chargingEvent.sessionStatus = chargingStatus.sessionStatus;
       }
 
+      // Assign charging event data
       chargingEvent.chargeStatusPercentage = chargingStatus.chargeStatusPercentage;
       chargingEvent.chargeDeliveredKwh = chargingStatus.chargeDeliveredKwh;
       chargingEvent.chargeSpeedKwh = chargingStatus.chargeSpeedKwh;
       chargingEvent.chargeVehicleRequestedKwh = chargingStatus.chargeVehicleRequestedKwh;
       chargingEvent.rateActivekWh = chargingStatus.rateActivekWh;
       chargingEvent.totalChargeTime = chargingStatus.sessionTotalDuration;
-      chargingEvent.sessionStatus = chargingStatus.sessionStatus;
 
-      chargingEvent.totalCostDollars = Number(chargingStatus.sessionTotalCost) && Math.max(chargingStatus.sessionTotalCost, 0.5);
+      let chargingData;
+      try {
+        chargingData = (await this.chargingIoTService.completeCharging(eventId)).data;
+        if (chargingData.status == 0) {
+          throw Error("IOT CompleteCharging failed with status=0");
+        }
+      } catch (error) {
+        this.logger.error("Complete Charge IOT error: ", error);
+        
+        chargingStatus.statusType = "error";
+        chargingStatus.statusMessage = this.getChargeStatusSystemErrorMessage();
+        chargingEvent.sessionStatus = "complete_iot_error";
+        chargingEvent.exceptionStatus = "pending";
+        await this.chargingEventService.saveChargingEvent(chargingEvent);
+        transactionLock[eventId] = false;
+        response.send(chargingStatus);
+        return;
+      }
+
+      chargingEvent.totalCostDollars = Number(chargingData.sessionTotalCost) && Math.max(chargingData.sessionTotalCost, 0.5);
       try {
         if (!chargingEvent.paymentIntentId && chargingEvent.totalCostDollars) {
           const timeZone = 'America/Los_Angeles';
@@ -310,16 +334,20 @@ export class AppController {
 
       // Release the server side lock
       transactionLock[eventId] = false;
-      console.log({chargingEvent});
-      if (chargingEvent.sessionStatus && chargingEvent.sessionStatus !== 'in_progress') {
-        chargingStatus.sessionStatus = chargingEvent.sessionStatus;
-        chargingStatus.sessionTotalCost = chargingEvent.totalCostDollars;
-      }
       response.send(chargingStatus);
     } catch (error) {
-      this.logger.error(error);
+      this.logger.error("Charging Status System Error: ", error);
+
+      // return an App to the frontend
+      chargingStatus.statusType = "error";
+      chargingStatus.statusMessage = this.getChargeStatusSystemErrorMessage();
+      if (chargingEvent) {
+        chargingEvent.sessionStatus = "charging_status_system_error";
+        chargingEvent.exceptionStatus = "pending";
+        await this.chargingEventService.saveChargingEvent(chargingEvent);
+      }
       transactionLock[eventId] = false;
-      response.status(500).send({ message: iotException ? "System Error..please try again or call 480-573-2001 for support." : 'ChargingIoT exception occurred' });
+      response.send(chargingStatus);
     }
   }
 
