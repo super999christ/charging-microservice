@@ -73,7 +73,7 @@ export class ChargingIoTService {
         this.handleIotResponse(res);
         retryFlag = false;
       } catch (err) {
-        this.handleIoTError(err);
+        this.logger.error("IOT service error: ", err);
         retryFlag = true;
       }
       if (retryFlag) {
@@ -108,9 +108,5 @@ export class ChargingIoTService {
       this.logger.error("IOT service returned bad data %o", data);
 
     return res;
-  }
-
-  public handleIoTError(err: any) {
-    this.logger.error("IOT service error: ", err);
   }
 }
