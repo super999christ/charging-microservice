@@ -109,4 +109,12 @@ export class ChargingIoTService {
 
     return res;
   }
+
+  public handleIoTError(err: any): never {
+    this.logger.error(err);
+
+    throw Error(
+      "Sorry, we're running into some issues. Please try again after sometime."
+    );
+  }
 }
