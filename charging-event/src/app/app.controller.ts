@@ -213,8 +213,7 @@ export class AppController {
           chargingEvent.sessionStatus = "status_iot_error";
           chargingEvent.exceptionStatus = "pending";
           await this.chargingEventService.saveChargingEvent(chargingEvent);
-          if (isStopped)
-            iotStopException = true;
+          iotStopException = true;
         }
       }
 
