@@ -179,28 +179,6 @@ export class AppController {
         throw Error("ChargingEvent User not found");
       }
 
-      try {
-        chargingStatus = (await this.chargingIoTService.getChargingStatus(eventId)).data;
-        if (chargingStatus.status == 0) {
-          throw Error("IOT ChargingStatus failed with status=0");
-        }
-        chargingStatus.statusType = 'none';
-        chargingStatus.statusMessage = 'none';
-      } catch (error) {
-        this.logger.error("IOT Error: Get Charging Status failed ", error);
-        // return an App error to the frontend and set for offline processing
-        chargingStatus.statusType = "error";
-        chargingStatus.statusMessage = this.getChargeStatusSystemErrorMessage();
-        chargingEvent.sessionStatus = "status_iot_error";
-        chargingEvent.exceptionStatus = "pending";
-        await this.chargingEventService.saveChargingEvent(chargingEvent);
-        transactionLock[chargingEvent.id] = false;
-
-        chargingStatus.sessionStatus = chargingEvent.sessionStatus;
-        response.send(chargingStatus);
-        return;
-      }
-
       if (isStopped) {
         let result;
         try {
@@ -226,6 +204,28 @@ export class AppController {
           response.send(chargingStatus);
           return;
         }
+      }
+
+      try {
+        chargingStatus = (await this.chargingIoTService.getChargingStatus(eventId)).data;
+        if (chargingStatus.status == 0) {
+          throw Error("IOT ChargingStatus failed with status=0");
+        }
+        chargingStatus.statusType = 'none';
+        chargingStatus.statusMessage = 'none';
+      } catch (error) {
+        this.logger.error("IOT Error: Get Charging Status failed ", error);
+        // return an App error to the frontend and set for offline processing
+        chargingStatus.statusType = "error";
+        chargingStatus.statusMessage = this.getChargeStatusSystemErrorMessage();
+        chargingEvent.sessionStatus = "status_iot_error";
+        chargingEvent.exceptionStatus = "pending";
+        await this.chargingEventService.saveChargingEvent(chargingEvent);
+        transactionLock[chargingEvent.id] = false;
+
+        chargingStatus.sessionStatus = chargingEvent.sessionStatus;
+        response.send(chargingStatus);
+        return;
       }
 
       // InProgress status and return latest charge status
