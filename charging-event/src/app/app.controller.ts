@@ -179,6 +179,28 @@ export class AppController {
         throw Error("ChargingEvent User not found");
       }
 
+      try {
+        chargingStatus = (await this.chargingIoTService.getChargingStatus(eventId)).data;
+        if (chargingStatus.status == 0) {
+          throw Error("IOT ChargingStatus failed with status=0");
+        }
+        chargingStatus.statusType = 'none';
+        chargingStatus.statusMessage = 'none';
+      } catch (error) {
+        this.logger.error("IOT Error: Get Charging Status failed ", error);
+        // return an App error to the frontend and set for offline processing
+        chargingStatus.statusType = "error";
+        chargingStatus.statusMessage = this.getChargeStatusSystemErrorMessage();
+        chargingEvent.sessionStatus = "status_iot_error";
+        chargingEvent.exceptionStatus = "pending";
+        await this.chargingEventService.saveChargingEvent(chargingEvent);
+        transactionLock[chargingEvent.id] = false;
+
+        chargingStatus.sessionStatus = chargingEvent.sessionStatus;
+        response.send(chargingStatus);
+        return;
+      }
+
       if (isStopped) {
         let result;
         try {
@@ -199,23 +221,8 @@ export class AppController {
           chargingEvent.exceptionStatus = "pending";
           await this.chargingEventService.saveChargingEvent(chargingEvent);
           transactionLock[eventId] = false;
-          response.send(chargingStatus);
-          return;
-        }
-        try {
-          chargingStatus = (await this.chargingIoTService.getChargingStatus(eventId)).data;
-          if (chargingStatus.status == 0) {
-            throw Error("IOT ChargingStatus failed with status=0");
-          }
-        } catch (error) {
-          this.logger.error("IOT Error: Get Charging Status failed ", error);
-          // return an App error to the frontend and set for offline processing
-          chargingStatus.statusType = "error";
-          chargingStatus.statusMessage = this.getChargeStatusSystemErrorMessage();
-          chargingEvent.sessionStatus = "status_iot_error";
-          chargingEvent.exceptionStatus = "pending";
-          await this.chargingEventService.saveChargingEvent(chargingEvent);
-          transactionLock[chargingEvent.id] = false;
+
+          chargingStatus.sessionStatus = chargingEvent.sessionStatus;
           response.send(chargingStatus);
           return;
         }
@@ -224,6 +231,7 @@ export class AppController {
       // InProgress status and return latest charge status
       if (chargingStatus.sessionStatus === 'charging' && !isStopped && chargingStatus.chargeComplete == 0) {
         transactionLock[eventId] = false;
+        chargingStatus.sessionStatus = chargingEvent.sessionStatus;
         response.send(chargingStatus);
         return;
       }
@@ -232,10 +240,11 @@ export class AppController {
       if (!chargingStatus.sessionTotalCost) {
         chargingStatus.statusType = "info";
         chargingStatus.statusMessage = this.getNoPowerMessage();
-        chargingEvent.sessionStatus = chargingStatus.sessionStatus = "zero_session";
+        chargingEvent.sessionStatus = "zero_session";
         await this.chargingEventService.saveChargingEvent(chargingEvent);
-
         transactionLock[eventId] = false;
+
+        chargingStatus.sessionStatus = chargingEvent.sessionStatus;
         response.send(chargingStatus);
         return;
       }
@@ -283,6 +292,8 @@ export class AppController {
         chargingEvent.exceptionStatus = "pending";
         await this.chargingEventService.saveChargingEvent(chargingEvent);
         transactionLock[eventId] = false;
+
+        chargingStatus.sessionStatus = chargingEvent.sessionStatus;
         response.send(chargingStatus);
         return;
       }
@@ -325,6 +336,8 @@ export class AppController {
 
         await this.chargingEventService.saveChargingEvent(chargingEvent);
         transactionLock[eventId] = false;
+
+        chargingStatus.sessionStatus = chargingEvent.sessionStatus;
         response.send(chargingStatus);
         return;
       }
@@ -334,6 +347,7 @@ export class AppController {
 
       // Release the server side lock
       transactionLock[eventId] = false;
+      chargingStatus.sessionStatus = chargingEvent.sessionStatus;
       response.send(chargingStatus);
     } catch (error) {
       this.logger.error("Charging Status System Error: ", error);
@@ -345,6 +359,7 @@ export class AppController {
         chargingEvent.sessionStatus = "charging_status_system_error";
         chargingEvent.exceptionStatus = "pending";
         await this.chargingEventService.saveChargingEvent(chargingEvent);
+        chargingStatus.sessionStatus = chargingEvent.sessionStatus;
       }
       transactionLock[eventId] = false;
       response.send(chargingStatus);
