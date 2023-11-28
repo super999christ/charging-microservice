@@ -164,7 +164,6 @@ export class AppController {
     }
     transactionLock[eventId] = true;
 
-    let iotException = false;
     let chargingEvent;
     try {
       // Lookup charging event and user billing plan
@@ -190,7 +189,6 @@ export class AppController {
             throw Error("IOT StopCharging failed with status=0");
           }
         } catch (error) {
-          iotException = true;
           this.logger.error("Stop IOT error: ", error);
           // return an App error to the frontend and set for offline processing
           chargingStatus.statusType = "error";
