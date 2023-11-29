@@ -185,14 +185,14 @@ export class AppController {
             eventId,
             eventType: 'stop'
           })).data;
-          if (result.status == 0) {
+          if (result.status != 1) {
             throw Error("IOT StopCharging failed with status=0");
           }
         } catch (error) {
           this.logger.error("Stop IOT error: ", error);
           // return an App error to the frontend and set for offline processing
-          chargingStatus.statusType = "error";
-          chargingStatus.statusMessage = this.getChargeStatusSystemErrorMessage();
+          chargingStatus.statusType = "success";
+          chargingStatus.statusMessage = this.getSuccessStopMessage(user.billingPlanId);
           chargingEvent.sessionStatus = "stop_iot_error";
           chargingEvent.exceptionStatus = "pending";
           await this.chargingEventService.saveChargingEvent(chargingEvent);
@@ -206,7 +206,7 @@ export class AppController {
 
       try {
         chargingStatus = (await this.chargingIoTService.getChargingStatus(eventId)).data;
-        if (chargingStatus.status == 0) {
+        if (chargingStatus.status != 1) {
           throw Error("IOT ChargingStatus failed with status=0");
         }
         chargingStatus.statusType = 'none';
@@ -235,7 +235,7 @@ export class AppController {
       }
 
       // Check for zero dollar session and update DB and return
-      if (!chargingStatus.sessionTotalCost) {
+      if (chargingStatus.sessionTotalCost == 0) {
         chargingStatus.statusType = "info";
         chargingStatus.statusMessage = this.getNoPowerMessage();
         chargingEvent.sessionStatus = "zero_session";
@@ -262,8 +262,8 @@ export class AppController {
       } else {
         // all other statuses – treat as IOT App Error
         // "available", "trickle", "charging", "offline", “lost-network” 
-        chargingStatus.statusType = "error";
-        chargingStatus.statusMessage = this.getIOTErorMessage(user.billingPlanId);
+        chargingStatus.statusType = "success";
+        chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
         chargingEvent.sessionStatus = chargingStatus.sessionStatus;
       }
 
@@ -278,14 +278,14 @@ export class AppController {
       let chargingData;
       try {
         chargingData = (await this.chargingIoTService.completeCharging(eventId)).data;
-        if (chargingData.status == 0) {
+        if (chargingData.status != 1) {
           throw Error("IOT CompleteCharging failed with status=0");
         }
       } catch (error) {
         this.logger.error("Complete Charge IOT error: ", error);
         
-        chargingStatus.statusType = "error";
-        chargingStatus.statusMessage = this.getChargeStatusSystemErrorMessage();
+        chargingStatus.statusType = "success";
+        chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
         chargingEvent.sessionStatus = "complete_iot_error";
         chargingEvent.exceptionStatus = "pending";
         await this.chargingEventService.saveChargingEvent(chargingEvent);
