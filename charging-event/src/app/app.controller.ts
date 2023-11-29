@@ -192,7 +192,7 @@ export class AppController {
           this.logger.error("Stop IOT error: ", error);
           // return an App error to the frontend and set for offline processing
           chargingStatus.statusType = "error";
-          chargingStatus.statusType = this.getChargeStatusSystemErrorMessage();
+          chargingStatus.statusMessage = this.getChargeStatusSystemErrorMessage();
           chargingEvent.sessionStatus = "stop_iot_error";
           chargingEvent.exceptionStatus = "pending";
           await this.chargingEventService.saveChargingEvent(chargingEvent);
@@ -297,6 +297,7 @@ export class AppController {
       }
 
       chargingEvent.totalCostDollars = Number(chargingData.sessionTotalCost) && Math.max(chargingData.sessionTotalCost, 0.5);
+      chargingStatus.sessionTotalCost = chargingEvent.totalCostDollars;
       try {
         if (!chargingEvent.paymentIntentId && chargingEvent.totalCostDollars) {
           const timeZone = 'America/Los_Angeles';
@@ -309,7 +310,7 @@ export class AppController {
           if (PROMO1_FROM_DATE <= today && today < PROMO1_TO_DATE) {
             actualCost = Math.min(actualCost, 1);
             // Promotion message for transaction plan
-            if ( chargingStatus.billingPlanId == 1) {
+            if (chargingStatus.billingPlanId == 1) {
               chargingStatus.statusMessage = this.getPromotionMessage();
               chargingStatus.statusType = 'success';
             }
