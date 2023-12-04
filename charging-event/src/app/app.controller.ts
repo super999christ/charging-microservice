@@ -70,59 +70,70 @@ export class AppController {
     @Response() response: IResponse
   ) {
     let { stationId } = body;
+    let startStatus = {
+      statusType: 'none',
+      statusMessage: 'none'
+    };
+    let user, phoneNumber;
     try {
-      const user = (await this.externalService.umGetProfile(String(request.headers['authorization']))).data;
-      const phoneNumber = convert2StandardPhoneNumber(user.phoneNumber);
+      user = (await this.externalService.umGetProfile(String(request.headers['authorization']))).data;
+      phoneNumber = convert2StandardPhoneNumber(user.phoneNumber);
       if (!phoneNumber) {
-        response.status(400).send({
-          message: "Please enter 10 digit phone number - no dashes or spaces"
-        });
-        return;
+        throw Error("App Error in umGetProfile: User phone number validation");
       }
-      const chargingEvent = await this.chargingEventService.saveChargingEvent({
-        userId: user.id,
-        stationId
-      });
+    } catch (err) {
+      this.logger.error("User phone number validation failed: ", err);
+      startStatus.statusType = "error";
+      startStatus.statusMessage = "Login phone number validation failed. Please re-login and try again.";
+      response.send(startStatus);
+      return;
+    }
+    // Create DB Event
+    const chargingEvent = await this.chargingEventService.saveChargingEvent({
+      userId: user.id,
+      stationId
+    });
+    try {
+      // Check connectivity
       const { data: connectivity } =
         await this.chargingIoTService.checkConnectivity({
           stationId: chargingEvent.stationId,
           phoneNumber,
           eventId: chargingEvent.id,
         });
-      if (connectivity.status != 0) {
-        const { data: result } = await this.chargingIoTService.manageCharging({
-          eventId: chargingEvent.id,
-          eventType: 'start'
-        });
-        if (result.status != 0) {
-          chargingEvent.sessionStatus = "in_progress";
-          await this.chargingEventService.saveChargingEvent(chargingEvent);
-          response.status(200)
-            .send({ message: "AuthCode valid", ...chargingEvent });
-          return;
-        } else {
-          await this.chargingEventService.deleteChargingEvent(chargingEvent.id);
-          response.status(500)
-            .send({
-              message: 'Unable to start charging. Please try again.'
-            });
-          return;
-        }
-      } else {
-        await this.chargingEventService.deleteChargingEvent(chargingEvent.id);
-        response
-          .status(400)
-          .send(
-            { message: "NOTE: You must plug charger into car before pressing start." }
-          );
-        return;
+      if (connectivity.status != 1) {
+        throw Error("App Error in IOT CheckConnectivity returned Status: " + connectivity.status);
       }
     } catch (err) {
-      this.logger.error(err);
-      response.status(500).send({
-        message: "System Error... please try again or call 480-573-2001 for support. "
-      });
+      this.logger.error("System Error in IOT CheckConnectivity: ", err);
+      startStatus.statusType = "error";
+      startStatus.statusMessage = "Charging connection issue, please re-try plugging in or call 480-573-2001 for support.";
+      await this.chargingEventService.deleteChargingEvent(chargingEvent.id);
+      response.send(startStatus);
+      return;
     }
+    try {
+      // Start charge
+      const { data: result } = await this.chargingIoTService.manageCharging({
+        eventId: chargingEvent.id,
+        eventType: 'start'
+      });
+      if (result.status != 1) {
+        throw Error("App Error in IOT ManageCharging StartCharge, returned Status: " + result.status);
+      }
+    } catch (err) {
+      this.logger.error("System Error in IOT ManageCharging StartCharge: ", err);
+      startStatus.statusType = "error";
+      startStatus.statusMessage = "Charging start issue, please re-try plugging in or call 480-573-2001 for support.";
+      response.send(startStatus);
+      return;
+    }
+    // Successfully started the charge
+    chargingEvent.sessionStatus  ="in_progress";
+    await this.chargingEventService.saveChargingEvent(chargingEvent);
+    startStatus.statusType = "none";
+    startStatus.statusMessage = "none";
+    response.send(startStatus);
   }
 
   @Get("check-event-availability")
@@ -318,7 +329,8 @@ export class AppController {
           if (user.billingPlanId == 1) {
             const { data: paymentIntent } = await this.externalService.psCompleteCharge({
               amount: actualCost,
-              idempotencyKey: `transaction_charge_${chargingEvent.id}`
+              idempotencyKey: `transaction_charge_${chargingEvent.id}`,
+              description: `NXU charge with EventId=${chargingEvent.id}, StationId=${chargingEvent.stationId} and StationLocation=${chargingEvent.stationLocation}`
             }, request.headers.authorization as string);
             chargingEvent.paymentIntentId = paymentIntent.id;
           }
