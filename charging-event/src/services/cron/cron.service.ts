@@ -67,6 +67,7 @@ export class CronService {
                 {
                   amount: totalCost,
                   idempotencyKey: `transaction_charge_${event.id}`,
+                  description: `NXU charge with EventId=${event.id}, StationId=${event.stationId} and StationLocation=${event.stationLocation}`
                 },
                 `Bearer ${auth.token}`
               );

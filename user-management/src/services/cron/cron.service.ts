@@ -63,6 +63,7 @@ export class CronService {
             {
               amount: charge.amount,
               idempotencyKey: `subscription_charge_${charge.id}`,
+              description: `NXU charge with SubscriptionChargeId=${charge.id}`
             },
             `Bearer ${auth.token}`
           );
