@@ -6,4 +6,7 @@ export class CompleteChargeDto {
 
   @ApiProperty()
   idempotencyKey?: string;
+
+  @ApiProperty()
+  description?: string;
 };
