@@ -37,6 +37,7 @@ import { SubscriptionChargeService } from "../database/subscriptionCharge/subscr
 import { JwtService } from "../services/jwt/jwt.service";
 import { SubscriptionUpdateService } from "../database/subscriptionUpdate/subscriptionUpdate.service";
 import { SubscriptionPricingService } from "../database/subscriptionPricing/subscriptionPricing.service";
+import { SubscriptionCustomerService } from "../database/subscriptionCustomer/subscriptionCustomer.service";
 
 @Controller()
 export class AppController {
@@ -66,6 +67,9 @@ export class AppController {
 
   @Inject()
   private subscriptionPricingService: SubscriptionPricingService;
+
+  @Inject()
+  private subscriptionCustomerService: SubscriptionCustomerService;
 
   @Inject()
   private jwtService: JwtService;
@@ -647,9 +651,7 @@ export class AppController {
         .send(`No user exists with userId '${body.userId}'`);
 
     const subscription_customer =
-      Environment.TRIAL_SUBSCRIPTION_CUSTOMERS.split(",").includes(
-        user.phoneNumber
-      );
+      await this.subscriptionCustomerService.findActiveSubscriptionCustomer(user.phoneNumber);
 
     const token = this.jwtService.generateToken({
       sub: user.id,
