@@ -28,14 +28,14 @@ export class ChargingIoTService {
       .then((res) => this.handleIotResponse(res));
   }
 
-  public async getChargingStatus(body: ChargingStatusDto) {
+  public async getChargingStatus(eventId: number) {
     const simulatorData = await this.simulatorService.getChargingStatus();
     if (simulatorData) {
       return { data: simulatorData };
     }
     return axios
       .get(
-        `${Environment.SERVICE_CHARGING_IOT_URL}/get-charging-status?eventId=${body.eventId}`
+        `${Environment.SERVICE_CHARGING_IOT_URL}/get-charging-status?eventId=${eventId}`
       )
       .then((res) => this.handleIotResponse(res));
   }
@@ -53,14 +53,14 @@ export class ChargingIoTService {
       .catch((err) => this.handleIoTError(err));
   }
 
-  public async completeCharging(body: CompleteChargingDto) {
+  public async completeCharging(eventId: number) {
     const simulatorData = await this.simulatorService.completeCharging();
     if (simulatorData) {
       return { data: simulatorData };
     }
     return axios
       .get(
-        `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${body.eventId}`
+        `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${eventId}`
       )
       .then((res) => this.handleIotResponse(res))
       .catch((err) => this.handleIoTError(err));
