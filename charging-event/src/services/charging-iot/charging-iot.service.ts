@@ -41,8 +41,8 @@ export class ChargingIoTService {
         res = await apiFn();
         if (res.data.status != 1) {
           // Retry for App Errors
-          this.logger.error(`App Error in IOT ${apiName} method returned Status: ${res.data.status}`);
-          throw Error(`App Error in IOT ${apiName} method returned status: ${res.data.status}`);
+          this.logger.error(`App Error in IOT ${apiName} method returned Status: ${res.data.status}`, res.data);
+          throw Error(`App Error`);
         } else {
           retryFlag = false;
         }
