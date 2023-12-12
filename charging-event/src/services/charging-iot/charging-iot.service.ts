@@ -41,13 +41,15 @@ export class ChargingIoTService {
         res = await apiFn();
         if (res.data.status != 1) {
           // Retry for App Errors
-          this.logger.error(`App Error in IOT ${apiName} method returned Status: ${res.data.status}`, res.data);
+          this.logger.error(`App Error in IOT ${apiName} method returned Status: ${res.data.status}`);
+          this.logger.error(res.data);
           throw Error(`App Error`);
         } else {
           retryFlag = false;
         }
       } catch (err) {
-        this.logger.error(`IOT retry count ${IOT_RETRY_COUNT} and retry ${retryCount}`, err);
+        this.logger.error(`IOT retry count ${IOT_RETRY_COUNT} and retry ${retryCount}`);
+        this.logger.error(err);
         retryFlag = true;
       }
       if (retryFlag) {
