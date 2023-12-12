@@ -330,7 +330,7 @@ export class AppController {
             const { data: paymentIntent } = await this.externalService.psCompleteCharge({
               amount: actualCost,
               idempotencyKey: `transaction_charge_${chargingEvent.id}`,
-              description: `NXU charge with EventId=${chargingEvent.id}, StationId=${chargingEvent.stationId} and StationLocation=${chargingEvent.stationLocation}`
+              description: `NXU Charging Event=${chargingEvent.id}, Station=${chargingEvent.stationId}`
             }, request.headers.authorization as string);
             chargingEvent.paymentIntentId = paymentIntent.id;
           }
