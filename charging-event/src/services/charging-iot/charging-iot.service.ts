@@ -1,11 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { CheckConnectivityDto } from "./dtos/CheckConnectivity.dto";
-import { ChargingStatusDto } from "./dtos/ChargingStatus.dto";
 import { ManageChargingDto } from "./dtos/ManageCharging.dto";
 import axios, { AxiosResponse } from "axios";
 import Environment from "../../config/env";
 import { SimulatorService } from "../simulator/simulator.service";
-import { CompleteChargingDto } from "./dtos/CompleteCharging.dto";
 import { PinoLogger, InjectPinoLogger } from "nestjs-pino";
 
 @Injectable()
@@ -21,11 +19,50 @@ export class ChargingIoTService {
     if (simulatorData) {
       return { data: simulatorData };
     }
-    return axios
-      .get(
-        `${Environment.SERVICE_CHARGING_IOT_CHECK_CON_URL}/check-connectivity?eventId=${body.eventId}&phoneNumber=${body.phoneNumber}&stationId=${body.stationId}`
-      )
-      .then((res) => this.handleIotResponse(res));
+    const apiFn = () => {
+      return axios
+        .get(
+          `${Environment.SERVICE_CHARGING_IOT_CHECK_CON_URL}/check-connectivity?eventId=${body.eventId}&phoneNumber=${body.phoneNumber}&stationId=${body.stationId}`
+        )
+    };
+    return this.triggerIOTMethod(apiFn, "CheckConnectivity");
+  }
+
+  public async triggerIOTMethod(apiFn: () => Promise<any>, apiName: string) {
+    const IOT_RETRY_COUNT = Environment.IOT_RETRY_COUNT;
+    const IOT_RETRY_DELAY = Environment.IOT_RETRY_DELAY;
+
+    let retryCount: number = 0;
+    let retryFlag: boolean = false;
+    let res = { data: { status: 0 } };
+
+    this.logger.info("IOT Retrying: ", IOT_RETRY_COUNT);
+    while (retryCount < IOT_RETRY_COUNT) {
+      try {        
+        res = await apiFn();
+        this.logger.info("IOT Retry Result: ", retryCount, res);
+        this.handleIotResponse(res);
+        retryFlag = false;
+      } catch (err) {
+        this.logger.error("IOT service error: ", err);
+        retryFlag = true;
+      }
+      if (retryFlag) {
+        retryCount++;
+        const clockWaitPromise = new Promise(resolve => {
+          setTimeout(() => {
+            resolve(0);
+          }, IOT_RETRY_DELAY);
+        });
+        await clockWaitPromise;
+      } else {
+        break;
+      }
+    }
+    if (retryFlag) {
+      throw Error(`IOT ${apiName} failed`);
+    }
+    return res
   }
 
   public async getChargingStatus(eventId: number) {
@@ -33,24 +70,27 @@ export class ChargingIoTService {
     if (simulatorData) {
       return { data: simulatorData };
     }
-    return axios
-      .get(
-        `${Environment.SERVICE_CHARGING_IOT_URL}/get-charging-status?eventId=${eventId}`
-      )
-      .then((res) => this.handleIotResponse(res));
+    const apiFn = () => {
+      return axios
+        .get(
+          `${Environment.SERVICE_CHARGING_IOT_URL}/get-charging-status?eventId=${eventId}`
+        )  
+    };
+    return this.triggerIOTMethod(apiFn, "ChargingStatus");
   }
 
-  public async manageCharging(body: ManageChargingDto) {
+  public async manageCharging(body: ManageChargingDto): Promise<any> {
     const simulatorData = await this.simulatorService.manageCharging();
     if (simulatorData) {
       return { data: simulatorData };
     }
-    return axios
-      .get(
-        `${Environment.SERVICE_CHARGING_IOT_MANAGE_CHG_URL}/manage-charging?eventId=${body.eventId}&eventType=${body.eventType}`
-      )
-      .then((res) => this.handleIotResponse(res))
-      .catch((err) => this.handleIoTError(err));
+    const apiFn = () => {
+      return axios
+        .get(
+          `${Environment.SERVICE_CHARGING_IOT_MANAGE_CHG_URL}/manage-charging?eventId=${body.eventId}&eventType=${body.eventType}`
+        );
+    }
+    return this.triggerIOTMethod(apiFn, "ManageCharging");
   }
 
   public async completeCharging(eventId: number) {
@@ -58,15 +98,16 @@ export class ChargingIoTService {
     if (simulatorData) {
       return { data: simulatorData };
     }
-    return axios
-      .get(
-        `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${eventId}`
-      )
-      .then((res) => this.handleIotResponse(res))
-      .catch((err) => this.handleIoTError(err));
+    const apiFn = () => {
+      return axios
+        .get(
+          `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${eventId}`
+        );
+    }
+    return this.triggerIOTMethod(apiFn, "CompleteCharging");
   }
 
-  public handleIotResponse(res: AxiosResponse<any, any>) {
+  public handleIotResponse(res: any) {
     const { data } = res;
 
     this.logger.info("IOT service response: %o", res);
