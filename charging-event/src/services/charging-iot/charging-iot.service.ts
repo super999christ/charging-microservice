@@ -25,35 +25,31 @@ export class ChargingIoTService {
           `${Environment.SERVICE_CHARGING_IOT_CHECK_CON_URL}/check-connectivity?eventId=${body.eventId}&phoneNumber=${body.phoneNumber}&stationId=${body.stationId}`
         )
     };
-    return this.triggerIOTMethod(apiFn, "CheckConnectivity");
+    return this.triggerIOTMethod(apiFn, "CheckConnectivity", 4, 6);
   }
 
-  public async triggerIOTMethod(apiFn: () => Promise<any>, apiName: string) {
-    const IOT_RETRY_COUNT = Environment.IOT_RETRY_COUNT;
-    const IOT_RETRY_DELAY = Environment.IOT_RETRY_DELAY;
+  public async triggerIOTMethod(apiFn: () => Promise<any>, apiName?: string, retryCount?: number, retryDelay?: number) {
+    const IOT_RETRY_COUNT = retryCount || Environment.IOT_RETRY_COUNT;
+    const IOT_RETRY_DELAY = retryDelay || Environment.IOT_RETRY_DELAY;
 
-    let retryCount: number = 0;
+    let count: number = 0;
     let retryFlag: boolean = false;
     let res = { data: { status: 0 } };
 
-    while (retryCount < IOT_RETRY_COUNT) {
+    while (count < IOT_RETRY_COUNT) {
       try {        
         res = await apiFn();
         if (res.data.status != 1) {
           // Retry for App Errors
-          this.logger.error(`App Error in IOT ${apiName} method returned Status: ${res.data.status}`);
-          this.logger.error(res.data);
           throw Error(`App Error`);
         } else {
           retryFlag = false;
         }
       } catch (err) {
-        this.logger.error(`IOT retry count ${IOT_RETRY_COUNT} and retry ${retryCount}`);
-        this.logger.error(err);
         retryFlag = true;
       }
       if (retryFlag) {
-        retryCount++;
+        count++;
         const clockWaitPromise = new Promise(resolve => {
           setTimeout(() => {
             resolve(0);
