@@ -28,15 +28,15 @@ export class ChargingIoTService {
     return this.triggerIOTMethod(apiFn, "CheckConnectivity", Environment.IOT_CHECK_RETRY_COUNT,  Environment.IOT_CHECK_RETRY_DELAY);
   }
 
-  public async triggerIOTMethod(apiFn: () => Promise<any>, apiName?: string, retryCount?: number, retryDelay?: number) {
-    const IOT_RETRY_COUNT = retryCount || Environment.IOT_RETRY_COUNT;
-    const IOT_RETRY_DELAY = retryDelay || Environment.IOT_RETRY_DELAY;
+  public async triggerIOTMethod(apiFn: () => Promise<any>, apiName: string, retryCount: number, retryDelay: number) {
 
     let count: number = 0;
     let retryFlag: boolean = false;
     let res = { data: { status: 0 } };
 
-    while (count < IOT_RETRY_COUNT) {
+    this.logger.info(`apiName: ${apiName}, retryCount: ${retryCount}, retryDelay: ${retryDelay}`);
+
+    while (count < retryCount) {
       try {        
         res = await apiFn();
         if (res.data.status != 1) {
@@ -48,7 +48,7 @@ export class ChargingIoTService {
       } catch (err) {
         retryFlag = true;
 
-        const excp_str = `IOT ${apiName}, retry count ${IOT_RETRY_COUNT}, retry ${count}, Status ${res.data.status}, response ${JSON.stringify(res)}, catch_err =  ${err}`;
+        const excp_str = `IOT ${apiName}, retryCount ${retryCount}, retry ${count}, Status ${res.data.status}, response ${JSON.stringify(res)}, catch_err =  ${err}`;
         this.logger.error(excp_str);
       }
       if (retryFlag) {
@@ -56,7 +56,7 @@ export class ChargingIoTService {
         const clockWaitPromise = new Promise(resolve => {
           setTimeout(() => {
             resolve(0);
-          }, IOT_RETRY_DELAY);
+          }, retryCount);
         });
         await clockWaitPromise;
       } else {
@@ -80,7 +80,7 @@ export class ChargingIoTService {
           `${Environment.SERVICE_CHARGING_IOT_URL}/get-charging-status?eventId=${eventId}`
         )  
     };
-    return this.triggerIOTMethod(apiFn, "ChargingStatus");
+    return this.triggerIOTMethod(apiFn, "ChargingStatus", Environment.IOT_RETRY_COUNT, Environment.IOT_RETRY_DELAY);
   }
 
   public async manageCharging(body: ManageChargingDto): Promise<any> {
@@ -94,7 +94,7 @@ export class ChargingIoTService {
           `${Environment.SERVICE_CHARGING_IOT_MANAGE_CHG_URL}/manage-charging?eventId=${body.eventId}&eventType=${body.eventType}`
         );
     }
-    return this.triggerIOTMethod(apiFn, "ManageCharging");
+    return this.triggerIOTMethod(apiFn, "ManageCharging", Environment.IOT_RETRY_COUNT, Environment.IOT_RETRY_DELAY);
   }
 
   public async completeCharging(eventId: number) {
@@ -108,7 +108,7 @@ export class ChargingIoTService {
           `${Environment.SERVICE_CHARGING_IOT_COMPLETE_CHG_URL}/complete-charge?eventId=${eventId}`
         );
     }
-    return this.triggerIOTMethod(apiFn, "CompleteCharging");
+    return this.triggerIOTMethod(apiFn, "CompleteCharging", Environment.IOT_RETRY_COUNT, Environment.IOT_RETRY_DELAY);
   }
 
   public handleIotResponse(res: any) {
