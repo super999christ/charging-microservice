@@ -48,8 +48,9 @@ export class ChargingIoTService {
       } catch (err) {
         retryFlag = true;
 
-        const excp_str = `IOT ${apiName}, retryCount ${retryCount}, retry ${count}, Status ${res.data.status}, response ${JSON.stringify(res)}, catch_err =  ${err}`;
-        this.logger.error(excp_str);
+        this.logger.info(`Handling catch clause for ${apiName}`)
+        this.logger.error(`IOT ${apiName}, retryCount ${retryCount}, retry ${count}, Status ${res.data.status}, response ${JSON.stringify(res)}`);
+        this.logger.error(err);
       }
       if (retryFlag) {
         count++;
