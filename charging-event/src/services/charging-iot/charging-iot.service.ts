@@ -48,7 +48,7 @@ export class ChargingIoTService {
       } catch (err) {
         retryFlag = true;
 
-        const excp_str = `IOT ${apiName} method, Status ${res.data.status}, msg  ${JSON.stringify(res.data)}, retry count ${IOT_RETRY_COUNT}, retry ${retryCount}, catch_err =  ${err}`;
+        const excp_str = `IOT ${apiName} method, response ${JSON.stringify(res)}, Status ${res.data.status}, msg ${JSON.stringify(res.data)}, retry count ${IOT_RETRY_COUNT}, retry ${retryCount}, catch_err =  ${err}`;
         this.logger.error(excp_str);
       }
       if (retryFlag) {
