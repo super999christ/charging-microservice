@@ -56,7 +56,7 @@ export class ChargingIoTService {
         const clockWaitPromise = new Promise(resolve => {
           setTimeout(() => {
             resolve(0);
-          }, retryCount);
+          }, retryDelay);
         });
         await clockWaitPromise;
       } else {
