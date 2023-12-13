@@ -33,8 +33,8 @@ const Environment = {
   PROMO1_TO_DATE: new Date(process.env["PROMO1_TO_DATE"] as string),
   IOT_RETRY_COUNT: Number(process.env['IOT_RETRY_COUNT']) || 2,
   IOT_RETRY_DELAY: Number(process.env['IOT_RETRY_DELAY']) || 2000,
-  IOT_CHECK_RETRY_COUNT: Number(process.env.IOT_CHECK_RETRY_COUNT) || 4,
-  IOT_CHECK_RETRY_DELAY: Number(process.env.IOT_CHECK_RETRY_DELAY) || 6000
+  IOT_CHECK_RETRY_COUNT: Number(process.env.IOT_CHECK_RETRY_COUNT) || 6,
+  IOT_CHECK_RETRY_DELAY: Number(process.env.IOT_CHECK_RETRY_DELAY) || 4000
 };
 
 export default Environment;
