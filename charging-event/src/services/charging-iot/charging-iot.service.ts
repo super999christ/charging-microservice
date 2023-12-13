@@ -25,7 +25,7 @@ export class ChargingIoTService {
           `${Environment.SERVICE_CHARGING_IOT_CHECK_CON_URL}/check-connectivity?eventId=${body.eventId}&phoneNumber=${body.phoneNumber}&stationId=${body.stationId}`
         )
     };
-    return this.triggerIOTMethod(apiFn, "CheckConnectivity", 4, 6);
+    return this.triggerIOTMethod(apiFn, "CheckConnectivity", Environment.IOT_CHECK_RETRY_COUNT,  Environment.IOT_CHECK_RETRY_DELAY);
   }
 
   public async triggerIOTMethod(apiFn: () => Promise<any>, apiName?: string, retryCount?: number, retryDelay?: number) {
@@ -47,6 +47,9 @@ export class ChargingIoTService {
         }
       } catch (err) {
         retryFlag = true;
+
+        const excp_str = `IOT ${apiName} method, Status ${res.data.status}, msg  ${JSON.stringify(res.data)}, retry count ${IOT_RETRY_COUNT}, retry ${retryCount}, catch_err =  ${err}`;
+        this.logger.error(excp_str);
       }
       if (retryFlag) {
         count++;
