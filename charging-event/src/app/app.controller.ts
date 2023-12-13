@@ -105,7 +105,8 @@ export class AppController {
         throw Error("App Error in IOT CheckConnectivity returned Status: " + connectivity.status);
       }
     } catch (err) {
-      this.logger.error("System Error in IOT CheckConnectivity: ", err);
+      this.logger.error("System Error in IOT CheckConnectivity");
+      this.logger.error(err);
       startStatus.statusType = "error";
       startStatus.statusMessage = "Charging connection issue, please re-try plugging in or call 480-573-2001 for support.";
       await this.chargingEventService.deleteChargingEvent(chargingEvent.id);
