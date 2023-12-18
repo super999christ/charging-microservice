@@ -7,6 +7,7 @@ import { ValidateSMSAuthCodeDto } from "./dtos/ValidateSMSAuthCode.dto";
 import { CompleteChargeDto } from "./dtos/CompleteCharge.dto";
 import { SendEventCompletedDto } from "./dtos/SendEventCompleted.dto";
 import { RequestUserTokenDto } from "./dtos/RequestUserTokenDto.dto";
+import { SendSMSMessageDto } from "./dtos/SendSMSMessage.dto";
 
 @Injectable()
 export class ExternalService {
@@ -18,6 +19,10 @@ export class ExternalService {
     return axios.get(`${Environment.SERVICE_USER_MANAGEMENT_URL}/profile`, {
       headers: { Authorization: authorization }
     });
+  }
+
+  public async nsSendSMSMessage(body: SendSMSMessageDto) {
+    return axios.post(`${Environment.SERVICE_NOTIFICATION_URL}/send-sms-message`, body);
   }
 
   public async nsSendSMSAuthCode(body: SendSMSAuthCodeDto) {

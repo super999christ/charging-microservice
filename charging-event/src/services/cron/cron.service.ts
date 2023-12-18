@@ -5,6 +5,8 @@ import { ChargingIoTService } from "../charging-iot/charging-iot.service";
 import { ExternalService } from "../external/external.service";
 import { Cron } from "@nestjs/schedule";
 import { InjectPinoLogger, PinoLogger } from "nestjs-pino";
+import { chargingSmsNotificationEnabledStore } from "@root/src/global/store";
+import { getNoPowerMessage, getSuccessCompleteMessage } from "@root/src/global/message";
 
 @Injectable()
 export class CronService {
@@ -90,6 +92,59 @@ export class CronService {
       } catch (err) {
         this.logger.error(err);
       }
+    }
+  }
+
+  @Cron(Environment.CHARGING_SMS_NOTIFICATION_PROCESSING_CRON_SCHEDUE)
+  public async runChargingSMSNotificationProcessing() {
+    const eventIds = Object.keys(chargingSmsNotificationEnabledStore);
+    for (const key of eventIds) {
+      const eventId = Number(key);
+      if (chargingSmsNotificationEnabledStore[eventId]) {
+        this.sendChargingSMSNotification(eventId);
+      }
+    }
+  }
+
+  public async sendChargingSMSNotification(eventId: number) {
+    try {
+      const chargingEvent = await this.chargingEventService.getChargingEvent(eventId);
+      if (!chargingEvent) {
+        throw Error("ChargingEvent not found");
+      }
+      const user = (await this.externalService.umGetUserById(chargingEvent.userId)).data;
+      if (!user) {
+        throw Error("ChargingEvent User not found");
+      }
+      const chargingStatus = (await this.chargingIoTService.getChargingStatus(eventId)).data;
+      if (chargingStatus.status != 1) {
+        throw Error("ChargingStatus failed with status=0");
+      }
+      // InProgress status and send SMS notification
+      let chargingMessage;
+      if (chargingStatus.sessionStatus === 'charging' && chargingStatus.chargeComplete == 0) {
+        chargingMessage = `NXU Charging Update:\n ChargingStatus=${chargingStatus.chargeStatusPercentage}\n ChargingTime=${chargingStatus.sessionTotalDuration}`;
+      } else if (chargingStatus.sessionTotalCost == 0) {
+        // Check for $0 session
+        chargingMessage = `
+          NXU Charging completed:
+          ${getNoPowerMessage()}`;
+        delete chargingSmsNotificationEnabledStore[eventId];  // Stop SMS notification
+      } {
+        chargingMessage = `NXU Charging completed:\n ChargingStatus=${chargingStatus.chargeStatusPercentage}\n ChargingTime=${chargingStatus.sessionTotalDuration}\n ChargingCost=${chargingStatus.sessionTotalCost}\n${getSuccessCompleteMessage(user.billingPlanId)}`;
+        delete chargingSmsNotificationEnabledStore[eventId];  // Stop SMS notification
+      }
+      const smsStatus = (await this.externalService.nsSendSMSMessage({
+        phoneNumber: user.phoneNumber,
+        smsMessage: chargingMessage
+      })).data;
+      if (smsStatus !== 'success') {
+        this.logger.error(`SMS Error for event (${eventId}) user (${user.phoneNumber}) message (${chargingMessage})`);
+      } else {
+        this.logger.info(`SMS complete for event (${eventId}) user (${user.phoneNumber}) message (${chargingMessage})`);
+      }
+    } catch (err) {
+      this.logger.error(err);
     }
   }
 }

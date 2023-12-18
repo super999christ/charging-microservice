@@ -18,8 +18,9 @@ import { ChargingIoTService } from "../services/charging-iot/charging-iot.servic
 import { ChargingStatusDto } from "../services/charging-iot/dtos/ChargingStatus.dto";
 import { convert2StandardPhoneNumber } from "../utils/phone.util";
 import Environment from "../config/env";
-
-const transactionLock: Record<number, boolean> = {};
+import { CronService } from "../services/cron/cron.service";
+import { transactionLock, chargingSmsNotificationEnabledStore } from '../global/store';
+import { getChargeStatusSystemErrorMessage, getNoPowerMessage, getPromotionMessage, getSuccessCompleteMessage, getSuccessStopMessage } from "../global/message";
 
 @Controller()
 export class AppController {
@@ -34,6 +35,9 @@ export class AppController {
 
   @Inject()
   private chargingIoTService: ChargingIoTService;
+
+  @Inject()
+  private cronService: CronService;
 
   @Get("active-session")
   @ApiOperation({ summary: "Finds the latest active charging session" })
@@ -163,7 +167,7 @@ export class AppController {
     @Request() request: IRequest,
     @Response() response: IResponse
   ) {
-    const { eventId, isStopped } = body;
+    const { eventId, isStopped, smsNotificationEnabled } = body;
     let chargingStatus: any = {
       statusType: 'none',
       statusMessage: 'none'
@@ -175,6 +179,7 @@ export class AppController {
       return;
     }
     transactionLock[eventId] = true;
+    chargingSmsNotificationEnabledStore[eventId] = Boolean(smsNotificationEnabled);
 
     let chargingEvent;
     try {
@@ -204,7 +209,7 @@ export class AppController {
           this.logger.error("Stop IOT error: ", error);
           // return an App error to the frontend and set for offline processing
           chargingStatus.statusType = "success";
-          chargingStatus.statusMessage = this.getSuccessStopMessage(user.billingPlanId);
+          chargingStatus.statusMessage = getSuccessStopMessage(user.billingPlanId);
           chargingEvent.sessionStatus = "stop_iot_error";
           chargingEvent.exceptionStatus = "pending";
           await this.chargingEventService.saveChargingEvent(chargingEvent);
@@ -227,7 +232,7 @@ export class AppController {
         this.logger.error("IOT Error: Get Charging Status failed ", error);
         // return an App error to the frontend and set for offline processing
         chargingStatus.statusType = "error";
-        chargingStatus.statusMessage = this.getChargeStatusSystemErrorMessage();
+        chargingStatus.statusMessage = getChargeStatusSystemErrorMessage();
         chargingEvent.sessionStatus = "status_iot_error";
         chargingEvent.exceptionStatus = "pending";
         await this.chargingEventService.saveChargingEvent(chargingEvent);
@@ -249,7 +254,7 @@ export class AppController {
       // Check for zero dollar session and update DB and return
       if (chargingStatus.sessionTotalCost == 0) {
         chargingStatus.statusType = "info";
-        chargingStatus.statusMessage = this.getNoPowerMessage();
+        chargingStatus.statusMessage = getNoPowerMessage();
         chargingEvent.sessionStatus = "zero_session";
         await this.chargingEventService.saveChargingEvent(chargingEvent);
         transactionLock[eventId] = false;
@@ -261,21 +266,21 @@ export class AppController {
 
       if (isStopped) {
         chargingStatus.statusType = "success";
-        chargingStatus.statusMessage = this.getSuccessStopMessage(user.billingPlanId);
+        chargingStatus.statusMessage = getSuccessStopMessage(user.billingPlanId);
         chargingEvent.sessionStatus = 'stopped';
       } else if (chargingStatus.chargeComplete == 1) {
         chargingStatus.statusType = "success";
-        chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
+        chargingStatus.statusMessage = getSuccessCompleteMessage(user.billingPlanId);
         chargingEvent.sessionStatus = "completed";
       } else if (chargingStatus.sessionStatus === 'idle') {
         chargingStatus.statusType = "success";
-        chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
+        chargingStatus.statusMessage = getSuccessCompleteMessage(user.billingPlanId);
         chargingEvent.sessionStatus = "idle";
       } else {
         // all other statuses – treat as IOT App Error
         // "available", "trickle", "charging", "offline", “lost-network” 
         chargingStatus.statusType = "success";
-        chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
+        chargingStatus.statusMessage = getSuccessCompleteMessage(user.billingPlanId);
         chargingEvent.sessionStatus = chargingStatus.sessionStatus;
       }
 
@@ -297,7 +302,7 @@ export class AppController {
         this.logger.error("Complete Charge IOT error: ", error);
         
         chargingStatus.statusType = "success";
-        chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
+        chargingStatus.statusMessage = getSuccessCompleteMessage(user.billingPlanId);
         chargingEvent.sessionStatus = "complete_iot_error";
         chargingEvent.exceptionStatus = "pending";
         await this.chargingEventService.saveChargingEvent(chargingEvent);
@@ -323,7 +328,7 @@ export class AppController {
             actualCost = Math.min(actualCost, 1);
             // Promotion message for transaction plan
             if (chargingStatus.billingPlanId == 1) {
-              chargingStatus.statusMessage = this.getPromotionMessage();
+              chargingStatus.statusMessage = getPromotionMessage();
               chargingStatus.statusType = 'success';
             }
           }
@@ -341,7 +346,7 @@ export class AppController {
         
         // set customer messaging to success as offline process will handle
         chargingStatus.statusType = "success";
-        chargingStatus.statusMessage = this.getSuccessCompleteMessage(user.billingPlanId);
+        chargingStatus.statusMessage = getSuccessCompleteMessage(user.billingPlanId);
 
         chargingEvent.sessionStatus = 'payment_error';
         chargingEvent.exceptionStatus = 'pending';
@@ -366,7 +371,7 @@ export class AppController {
 
       // return an App to the frontend
       chargingStatus.statusType = "error";
-      chargingStatus.statusMessage = this.getChargeStatusSystemErrorMessage();
+      chargingStatus.statusMessage = getChargeStatusSystemErrorMessage();
       if (chargingEvent) {
         chargingEvent.sessionStatus = "charging_status_system_error";
         chargingEvent.exceptionStatus = "pending";
@@ -395,38 +400,5 @@ export class AppController {
   @Get("healthz")
   public async healthz(@Response() res: IResponse) {
     return res.sendStatus(200);
-  }
-
-  getSuccessCompleteMessage(billingPlanId: number) {
-    if (billingPlanId === 2) { // subscription plan
-      return "Successfully completed charging. You are on the Subscription billing plan, transaction will not be charged to the credit card on file."; 
-    }
-    return "Successfully completed charging. Transaction will be charged to the credit card on file. Please remove the charge handle from the vehicle.";
-  }
-
-  getSuccessStopMessage(billingPlanId: number) {
-    if (billingPlanId === 2) { // subscription plan
-      return "Successfully stopped charging. You are on the Subscription billing plan, transaction will not be charged to the credit card on file.";
-    }
-    return "Successfully stopped charging. Transaction will be charged to the credit card on file. Please remove charge handle from the vehicle.";
-  }
-
-  getIOTErorMessage(billingPlanId: number) {
-    if (billingPlanId === 2) { // subscription plan
-      return "An error occurred before completing charge. You are on the Subscription billing plan, transaction will not be charged to the credit card on file. Please remove charge handle from the vehicle and retry charging.";
-    }
-    return "An error occurred before completing charge. Partial charging transaction will be charged to credit card on file. Please remove charge handle from the vehicle and retry charging.";
-  }
-
-  getNoPowerMessage()  {
-    return "Vehicle is not requesting any power. Please remove charge handle from the vehicle and retry charging.";
-  }
-
-  getChargeStatusSystemErrorMessage() {
-    return "System Error..please try again or call 480-573-2001 for support.";
-  }
-
-  getPromotionMessage(){
-    return "Product Launch promotion: $1 per charging session. Only $1 will be charged to your credit card.";
   }
 }

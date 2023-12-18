@@ -29,6 +29,9 @@ const Environment = {
   PAYMENTS_PROCESSING_CRON_SCHEDULE: String(
     process.env.PAYMENTS_PROCESSING_CRON_SCHEDULE
   ),
+  CHARGING_SMS_NOTIFICATION_PROCESSING_CRON_SCHEDUE: String(
+    process.env["CHARGING_SMS_NOTIFICATION_PROCESSING_CRON_SCHEDUE"]
+  ),
   PROMO1_FROM_DATE: new Date(process.env["PROMO1_FROM_DATE"] as string),
   PROMO1_TO_DATE: new Date(process.env["PROMO1_TO_DATE"] as string),
   IOT_RETRY_COUNT: Number(process.env['IOT_RETRY_COUNT']) || 2,

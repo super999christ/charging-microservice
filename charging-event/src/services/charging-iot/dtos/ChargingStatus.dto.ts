@@ -6,4 +6,7 @@ export class ChargingStatusDto {
 
   @ApiProperty()
   isStopped?: boolean;
+
+  @ApiProperty()
+  smsNotificationEnabled?: boolean;
 };
