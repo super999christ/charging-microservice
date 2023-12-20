@@ -124,24 +124,29 @@ export class CronService {
       let chargingMessage;
       if (chargingStatus.sessionStatus === 'charging' && chargingStatus.chargeComplete == 0) {
         chargingMessage = `NXU Charging Update:\n ChargingStatus=${chargingStatus.chargeStatusPercentage}\n ChargingTime=${chargingStatus.sessionTotalDuration}`;
-      } else if (chargingStatus.sessionTotalCost == 0) {
+      } else if (chargingStatus.chargeComplete == 1 && chargingStatus.sessionTotalCost == 0) {
         // Check for $0 session
         chargingMessage = `
           NXU Charging completed:
           ${getNoPowerMessage()}`;
         delete chargingSmsNotificationEnabledStore[eventId];  // Stop SMS notification
-      } {
+      } else if (chargingStatus.chargeComplete == 1) {
         chargingMessage = `NXU Charging completed:\n ChargingStatus=${chargingStatus.chargeStatusPercentage}\n ChargingTime=${chargingStatus.sessionTotalDuration}\n ChargingCost=${chargingStatus.sessionTotalCost}\n${getSuccessCompleteMessage(user.billingPlanId)}`;
         delete chargingSmsNotificationEnabledStore[eventId];  // Stop SMS notification
-      }
-      const smsStatus = (await this.externalService.nsSendSMSMessage({
-        phoneNumber: user.phoneNumber,
-        smsMessage: chargingMessage
-      })).data;
-      if (smsStatus !== 'success') {
-        this.logger.error(`SMS Error for event (${eventId}) user (${user.phoneNumber}) message (${chargingMessage})`);
       } else {
-        this.logger.info(`SMS complete for event (${eventId}) user (${user.phoneNumber}) message (${chargingMessage})`);
+        // Unknown logic condition don’t know what SessionStatus is, no SMS should be sent
+        this.logger.error(`ChargingIOT Error for event (${eventId}) user (${user.phoneNumber}) SessionStatus (${chargingStatus.sessionStatus}) ChargeComplete (${chargingStatus.chargeComplete})`);
+      }
+      if (chargingMessage) {
+        const smsStatus = (await this.externalService.nsSendSMSMessage({
+          phoneNumber: user.phoneNumber,
+          smsMessage: chargingMessage
+        })).data;
+        if (smsStatus !== 'success') {
+          this.logger.error(`SMS Error for event (${eventId}) user (${user.phoneNumber}) message (${chargingMessage})`);
+        } else {
+          this.logger.info(`SMS complete for event (${eventId}) user (${user.phoneNumber}) message (${chargingMessage})`);
+        }
       }
     } catch (err) {
       this.logger.error(err);
