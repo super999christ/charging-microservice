@@ -81,10 +81,10 @@ export class CronService {
             if (originalSessionStatus === "in_progress") {
               if (user.billingPlanId == 2) // subscription
                 event.sessionStatus = "ex_in_progress_sub";  
-              else // partner account
+              else if (user.billingPlanId == 3) // partner account
                 event.sessionStatus = "ex_in_progress_par";  
-            } else {
-              event.sessionStatus = "ex_in_progress_tbd";
+              else
+                event.sessionStatus = "ex_in_progress_tbd";
             }
             event.exceptionStatus = "completed";
           }
