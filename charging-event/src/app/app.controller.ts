@@ -179,7 +179,9 @@ export class AppController {
       return;
     }
     transactionLock[eventId] = true;
-    chargingSmsNotificationEnabledStore[eventId] = Boolean(smsNotificationEnabled);
+    const smsNotifyEnabled = Boolean(smsNotificationEnabled);
+    if (!chargingSmsNotificationEnabledStore[eventId] && smsNotifyEnabled)
+      chargingSmsNotificationEnabledStore[eventId] = smsNotifyEnabled;
 
     let chargingEvent;
     try {
