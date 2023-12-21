@@ -27,4 +27,10 @@ export class RegisterConfirmDto {
 
   @ApiProperty()
   pinCode: string;
+
+  @ApiProperty()
+  accountCode: string;
+
+  @ApiProperty()
+  isPartnerAccount: boolean;
 }

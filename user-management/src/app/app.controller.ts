@@ -38,6 +38,7 @@ import { JwtService } from "../services/jwt/jwt.service";
 import { SubscriptionUpdateService } from "../database/subscriptionUpdate/subscriptionUpdate.service";
 import { SubscriptionPricingService } from "../database/subscriptionPricing/subscriptionPricing.service";
 import { SubscriptionCustomerService } from "../database/subscriptionCustomer/subscriptionCustomer.service";
+import { PartnerAccountService } from "../database/partnerAccount/partnerAccount.service";
 
 @Controller()
 export class AppController {
@@ -70,6 +71,9 @@ export class AppController {
 
   @Inject()
   private subscriptionCustomerService: SubscriptionCustomerService;
+
+  @Inject()
+  private partnerAccountService: PartnerAccountService;
 
   @Inject()
   private jwtService: JwtService;
@@ -328,7 +332,7 @@ export class AppController {
     @Body() confirmDetails: RegisterConfirmDto,
     @Response() response: IResponse
   ) {
-    let { email, phoneNumber, pinCode, firstName, lastName } = confirmDetails;
+    let { email, phoneNumber, pinCode, firstName, lastName, accountCode, isPartnerAccount } = confirmDetails;
     try {
       phoneNumber = convert2StandardPhoneNumber(phoneNumber);
       const emailExisting = await this.userService.getUserByEmail(email);
@@ -348,6 +352,15 @@ export class AppController {
         return;
       }
 
+      let partnerAccount;
+      if (isPartnerAccount) {
+        partnerAccount = await this.partnerAccountService.getPartnerAccountByCode(accountCode);
+        if (!partnerAccount) {
+          response.status(400).send("Partner account does not exist");
+          return;
+        }
+      }
+
       const user = await this.userService.saveUser({
         email,
         password: pinCode,
@@ -357,6 +370,9 @@ export class AppController {
         tcFlag: true,
         active: true,
         phoneNumber,
+        stripeCustomerId: partnerAccount?.id,
+        stripePaymentMethodId: partnerAccount?.accountCode,
+        billingPlanId: isPartnerAccount ? 3 : undefined
       });
       const { data: tokenData } = await this.externalService.asRequestUserToken(
         {

@@ -60,8 +60,8 @@ export class CronService {
             status.chargeVehicleRequestedKwh;
           event.rateActivekWh = status.rateActivekWh;
           event.totalChargeTime = status.sessionTotalDuration
-          if (user.billingPlanId != 2) {
-            // <> not subscription
+          if (user.billingPlanId == 1) {
+            // is transaction
             const { data: paymentIntent } =
               await this.externalService.psCompleteCharge(
                 {
@@ -78,9 +78,14 @@ export class CronService {
               event.paymentIntentId = paymentIntent.id;
             }
           } else {
-            // is subscription
-            if (originalSessionStatus === "in_progress")
-              event.sessionStatus = "ex_in_progress_sub";
+            if (originalSessionStatus === "in_progress") {
+              if (user.billingPlanId == 2) // subscription
+                event.sessionStatus = "ex_in_progress_sub";  
+              else // partner account
+                event.sessionStatus = "ex_in_progress_par";  
+            } else {
+              event.sessionStatus = "ex_in_progress_tbd";
+            }
             event.exceptionStatus = "completed";
           }
           await this.chargingEventService.saveChargingEvent(event);

@@ -398,24 +398,36 @@ export class AppController {
   }
 
   getSuccessCompleteMessage(billingPlanId: number) {
-    if (billingPlanId === 2) { // subscription plan
-      return "Successfully completed charging. You are on the Subscription billing plan, transaction will not be charged to the credit card on file."; 
+    switch (billingPlanId) {
+      case 1: // transaction
+        return "Successfully completed charging. Transaction will be charged to the credit card on file. Please remove the charge handle from the vehicle.";
+      case 2: // subscription
+        return "Successfully completed charging. You are on the Subscription billing plan, transaction will not be charged to the credit card on file.";   
     }
-    return "Successfully completed charging. Transaction will be charged to the credit card on file. Please remove the charge handle from the vehicle.";
+    // partner
+    return "Successfully completed charging.";
   }
 
   getSuccessStopMessage(billingPlanId: number) {
-    if (billingPlanId === 2) { // subscription plan
-      return "Successfully stopped charging. You are on the Subscription billing plan, transaction will not be charged to the credit card on file.";
+    switch (billingPlanId) {
+      case 1: // transaction
+        return "Successfully stopped charging. Transaction will be charged to the credit card on file. Please remove charge handle from the vehicle."; 
+      case 2: // subscription
+        return "Successfully stopped charging. You are on the Subscription billing plan, transaction will not be charged to the credit card on file.";
     }
-    return "Successfully stopped charging. Transaction will be charged to the credit card on file. Please remove charge handle from the vehicle.";
+    // partner
+    return "Successfully stopped charging.";
   }
 
   getIOTErorMessage(billingPlanId: number) {
-    if (billingPlanId === 2) { // subscription plan
-      return "An error occurred before completing charge. You are on the Subscription billing plan, transaction will not be charged to the credit card on file. Please remove charge handle from the vehicle and retry charging.";
+    switch (billingPlanId) {
+      case 1: // transaction
+        return "An error occurred before completing charge. Partial charging transaction will be charged to credit card on file. Please remove charge handle from the vehicle and retry charging."; 
+      case 2: // subscription
+        return "An error occurred before completing charge. You are on the Subscription billing plan, transaction will not be charged to the credit card on file. Please remove charge handle from the vehicle and retry charging.";  
     }
-    return "An error occurred before completing charge. Partial charging transaction will be charged to credit card on file. Please remove charge handle from the vehicle and retry charging.";
+    // partner
+    return "An error occurred before completing charge. Please remove charge handle from the vehicle and retry charging."; 
   }
 
   getNoPowerMessage()  {

@@ -16,6 +16,7 @@ import { CronModule } from "../services/cron/cron.module";
 import { SubscriptionUpdateModule } from "../database/subscriptionUpdate/subscriptionUpdate.module";
 import { SubscriptionPricingModule } from "../database/subscriptionPricing/subscriptionPricing.module";
 import { SubscriptionCustomerModule } from "../database/subscriptionCustomer/subscriptionCustomer.module";
+import { PartnerAccountModule } from "../database/partnerAccount/partnerAccount.module";
 
 @Module({
   controllers: [AppController],
@@ -34,6 +35,7 @@ import { SubscriptionCustomerModule } from "../database/subscriptionCustomer/sub
     SubscriptionUpdateModule,
     SubscriptionPricingModule,
     SubscriptionCustomerModule,
+    PartnerAccountModule,
     JwtModule,
     CronModule,
   ],
